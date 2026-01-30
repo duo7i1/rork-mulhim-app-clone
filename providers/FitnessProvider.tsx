@@ -16,6 +16,8 @@ import {
   FavoriteExercise,
   FavoriteMeal,
 } from "@/types/fitness";
+import { useAuth } from "@/providers/AuthProvider";
+import { remoteFitnessRepo } from "@/lib/remoteFitnessRepo";
 
 const PROFILE_KEY = "@mulhim_profile";
 const PROGRESS_KEY = "@mulhim_progress";
@@ -27,6 +29,7 @@ const FAVORITE_EXERCISES_KEY = "@mulhim_favorite_exercises";
 const FAVORITE_MEALS_KEY = "@mulhim_favorite_meals";
 
 export const [FitnessProvider, useFitness] = createContextHook(() => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FitnessProfile | null>(null);
   const [progress, setProgress] = useState<ProgressEntry[]>([]);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
@@ -44,7 +47,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   const safeJsonParse = <T,>(data: string | null, fallback: T): T => {
     if (!data) return fallback;
@@ -63,6 +66,32 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const loadData = async () => {
     try {
+      if (user) {
+        console.log('[FitnessProvider] Loading data from Supabase for user:', user.id);
+        try {
+          const [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
+            remoteFitnessRepo.fetchProfile(user.id),
+            remoteFitnessRepo.fetchProgressEntries(user.id),
+            remoteFitnessRepo.fetchWorkoutLogs(user.id),
+          ]);
+
+          if (remoteProfile) {
+            setProfile(remoteProfile);
+            await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
+          }
+          if (remoteProgress.length > 0) {
+            setProgress(remoteProgress);
+            await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
+          }
+          if (remoteLogs.length > 0) {
+            setWorkoutLogs(remoteLogs);
+            await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
+          }
+        } catch (remoteError) {
+          console.error('[FitnessProvider] Error loading from Supabase, falling back to local:', remoteError);
+        }
+      }
+
       const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData] = await Promise.all([
         AsyncStorage.getItem(PROFILE_KEY),
         AsyncStorage.getItem(PROGRESS_KEY),
@@ -74,7 +103,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         AsyncStorage.getItem(FAVORITE_MEALS_KEY),
       ]);
 
-      if (profileData) {
+      if (!profile && profileData) {
         const parsed = safeJsonParse<FitnessProfile | null>(profileData, null);
         if (parsed) {
           setProfile(parsed);
@@ -82,14 +111,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           await AsyncStorage.removeItem(PROFILE_KEY);
         }
       }
-      if (progressData) {
+      if (progress.length === 0 && progressData) {
         const parsed = safeJsonParse<ProgressEntry[]>(progressData, []);
         setProgress(parsed);
         if (parsed.length === 0 && progressData) {
           await AsyncStorage.removeItem(PROGRESS_KEY);
         }
       }
-      if (logsData) {
+      if (workoutLogs.length === 0 && logsData) {
         const parsed = safeJsonParse<WorkoutLog[]>(logsData, []);
         setWorkoutLogs(parsed);
         if (parsed.length === 0 && logsData) {
@@ -152,30 +181,49 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           newProfile.fitnessLevel = "advanced";
         }
       }
+
+      if (user) {
+        console.log('[FitnessProvider] Saving profile to Supabase for user:', user.id);
+        await remoteFitnessRepo.upsertProfile(user.id, newProfile);
+      }
+
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
       setProfile(newProfile);
     } catch (error) {
       console.error("Error saving profile:", error);
+      throw error;
     }
   };
 
   const addProgressEntry = async (entry: ProgressEntry) => {
     try {
+      if (user) {
+        console.log('[FitnessProvider] Saving progress entry to Supabase for user:', user.id);
+        await remoteFitnessRepo.insertProgressEntry(user.id, entry);
+      }
+
       const updated = [...progress, entry];
       await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
       setProgress(updated);
     } catch (error) {
       console.error("Error adding progress entry:", error);
+      throw error;
     }
   };
 
   const addWorkoutLog = async (log: WorkoutLog) => {
     try {
+      if (user) {
+        console.log('[FitnessProvider] Saving workout log to Supabase for user:', user.id);
+        await remoteFitnessRepo.insertWorkoutLog(user.id, log);
+      }
+
       const updated = [...workoutLogs, log];
       await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(updated));
       setWorkoutLogs(updated);
     } catch (error) {
       console.error("Error adding workout log:", error);
+      throw error;
     }
   };
 
