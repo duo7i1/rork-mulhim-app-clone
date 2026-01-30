@@ -25,6 +25,16 @@ export interface WorkoutLogRow {
   created_at: string;
 }
 
+async function checkSupabaseConnection(): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    return !error || error.code === 'PGRST116';
+  } catch (e) {
+    console.warn('[RemoteFitnessRepo] Supabase connection check failed:', e);
+    return false;
+  }
+}
+
 export const remoteFitnessRepo = {
   async upsertProfile(userId: string, profile: FitnessProfile) {
     console.log('[RemoteFitnessRepo] Upserting profile for user:', userId);
@@ -56,28 +66,36 @@ export const remoteFitnessRepo = {
   async fetchProfile(userId: string): Promise<FitnessProfile | null> {
     console.log('[RemoteFitnessRepo] Fetching profile for user:', userId);
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('data')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('data')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        console.log('[RemoteFitnessRepo] Profile not found');
-        return null;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('[RemoteFitnessRepo] Profile not found');
+          return null;
+        }
+        console.error('[RemoteFitnessRepo] Error fetching profile:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }, null, 2));
+        throw error;
       }
-      console.error('[RemoteFitnessRepo] Error fetching profile:', JSON.stringify({
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }, null, 2));
+
+      console.log('[RemoteFitnessRepo] Profile fetched successfully');
+      return data.data as FitnessProfile;
+    } catch (error: any) {
+      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+        console.error('[RemoteFitnessRepo] Network error fetching profile. Supabase may be unreachable.');
+        throw new Error('NETWORK_ERROR');
+      }
       throw error;
     }
-
-    console.log('[RemoteFitnessRepo] Profile fetched successfully');
-    return data.data as FitnessProfile;
   },
 
   async insertProgressEntry(userId: string, entry: ProgressEntry) {
@@ -110,24 +128,32 @@ export const remoteFitnessRepo = {
   async fetchProgressEntries(userId: string): Promise<ProgressEntry[]> {
     console.log('[RemoteFitnessRepo] Fetching progress entries for user:', userId);
     
-    const { data, error } = await supabase
-      .from('progress_entries')
-      .select('data')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('progress_entries')
+        .select('data')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[RemoteFitnessRepo] Error fetching progress entries:', JSON.stringify({
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }, null, 2));
+      if (error) {
+        console.error('[RemoteFitnessRepo] Error fetching progress entries:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }, null, 2));
+        throw error;
+      }
+
+      console.log('[RemoteFitnessRepo] Progress entries fetched:', data.length);
+      return data.map(row => row.data as ProgressEntry);
+    } catch (error: any) {
+      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+        console.error('[RemoteFitnessRepo] Network error fetching progress entries. Supabase may be unreachable.');
+        throw new Error('NETWORK_ERROR');
+      }
       throw error;
     }
-
-    console.log('[RemoteFitnessRepo] Progress entries fetched:', data.length);
-    return data.map(row => row.data as ProgressEntry);
   },
 
   async insertWorkoutLog(userId: string, log: WorkoutLog) {
@@ -160,23 +186,31 @@ export const remoteFitnessRepo = {
   async fetchWorkoutLogs(userId: string): Promise<WorkoutLog[]> {
     console.log('[RemoteFitnessRepo] Fetching workout logs for user:', userId);
     
-    const { data, error } = await supabase
-      .from('workout_logs')
-      .select('data')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('data')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[RemoteFitnessRepo] Error fetching workout logs:', JSON.stringify({
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }, null, 2));
+      if (error) {
+        console.error('[RemoteFitnessRepo] Error fetching workout logs:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }, null, 2));
+        throw error;
+      }
+
+      console.log('[RemoteFitnessRepo] Workout logs fetched:', data.length);
+      return data.map(row => row.data as WorkoutLog);
+    } catch (error: any) {
+      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+        console.error('[RemoteFitnessRepo] Network error fetching workout logs. Supabase may be unreachable.');
+        throw new Error('NETWORK_ERROR');
+      }
       throw error;
     }
-
-    console.log('[RemoteFitnessRepo] Workout logs fetched:', data.length);
-    return data.map(row => row.data as WorkoutLog);
   },
 };

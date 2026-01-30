@@ -158,11 +158,24 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         try {
           const migrationDone = await AsyncStorage.getItem(MIGRATION_DONE_KEY);
           
-          const [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
-            remoteFitnessRepo.fetchProfile(user.id),
-            remoteFitnessRepo.fetchProgressEntries(user.id),
-            remoteFitnessRepo.fetchWorkoutLogs(user.id),
-          ]);
+          let remoteProfile = null;
+          let remoteProgress: ProgressEntry[] = [];
+          let remoteLogs: WorkoutLog[] = [];
+
+          try {
+            [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
+              remoteFitnessRepo.fetchProfile(user.id),
+              remoteFitnessRepo.fetchProgressEntries(user.id),
+              remoteFitnessRepo.fetchWorkoutLogs(user.id),
+            ]);
+          } catch (fetchError: any) {
+            if (fetchError.message === 'NETWORK_ERROR') {
+              console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data only');
+              console.log('[FitnessProvider] Step 2 complete: Running in offline mode');
+              return;
+            }
+            throw fetchError;
+          }
 
           if (!migrationDone) {
             console.log('[FitnessProvider] Migration: Checking for local data to upload');
@@ -210,13 +223,16 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           }
           
           console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
-        } catch (remoteError) {
-          console.error('[FitnessProvider] Step 2 failed: Error syncing with remote, using cached data');
-          if (remoteError instanceof Error) {
-            console.error('[FitnessProvider] Error message:', remoteError.message);
-            console.error('[FitnessProvider] Error stack:', remoteError.stack);
+        } catch (remoteError: any) {
+          if (remoteError?.message === 'NETWORK_ERROR') {
+            console.warn('[FitnessProvider] Network error during migration, skipping remote sync');
           } else {
-            console.error('[FitnessProvider] Error details:', JSON.stringify(remoteError, null, 2));
+            console.error('[FitnessProvider] Step 2 failed: Error syncing with remote, using cached data');
+            if (remoteError instanceof Error) {
+              console.error('[FitnessProvider] Error message:', remoteError.message);
+            } else {
+              console.error('[FitnessProvider] Error details:', JSON.stringify(remoteError, null, 2));
+            }
           }
         }
       } else {
@@ -242,7 +258,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
       if (user) {
         console.log('[FitnessProvider] Saving profile to Supabase for user:', user.id);
-        await remoteFitnessRepo.upsertProfile(user.id, newProfile);
+        try {
+          await remoteFitnessRepo.upsertProfile(user.id, newProfile);
+        } catch (error: any) {
+          if (error?.message === 'NETWORK_ERROR') {
+            console.warn('[FitnessProvider] Network error saving profile, saved locally only');
+          } else {
+            throw error;
+          }
+        }
       }
 
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
