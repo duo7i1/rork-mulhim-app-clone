@@ -6,7 +6,7 @@ import type {
 } from '@/types/fitness';
 
 export interface ProfileRow {
-  user_id: string;
+  id: string;
   data: FitnessProfile;
   updated_at?: string;
 }
@@ -32,7 +32,7 @@ export const remoteFitnessRepo = {
     const { data, error } = await supabase
       .from('profiles')
       .upsert({
-        user_id: userId,
+        id: userId,
         data: profile,
         updated_at: new Date().toISOString(),
       })
@@ -59,7 +59,7 @@ export const remoteFitnessRepo = {
     const { data, error } = await supabase
       .from('profiles')
       .select('data')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (error) {
