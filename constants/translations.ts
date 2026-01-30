@@ -277,6 +277,9 @@ export const translations = {
       haveAccount: 'لديك حساب؟',
       createAccount: 'إنشاء حساب جديد',
       loginNow: 'سجل دخولك',
+      accountPromptTitle: 'هل لديك حساب؟',
+      accountPromptDesc: 'سجل دخولك لمزامنة بياناتك عبر الأجهزة، أو تخطى لاستخدام التطبيق مباشرة',
+      skip: 'تخطي',
     },
     days: {
       sunday: 'الأحد',
@@ -665,6 +668,9 @@ export const translations = {
       haveAccount: 'Already have an account?',
       createAccount: 'Create Account',
       loginNow: 'Login Now',
+      accountPromptTitle: 'Do you have an account?',
+      accountPromptDesc: 'Sign in to sync your data across devices, or skip to use the app directly',
+      skip: 'Skip',
     },
     days: {
       sunday: 'Sunday',

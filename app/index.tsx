@@ -22,7 +22,7 @@ export default function Index() {
   }
 
   if (!hasProfile) {
-    return <Redirect href="/onboarding" />;
+    return <Redirect href="/account-prompt" />;
   }
 
   return <Redirect href="/(tabs)/plan" />;
