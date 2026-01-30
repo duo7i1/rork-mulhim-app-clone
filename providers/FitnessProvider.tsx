@@ -66,40 +66,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const loadData = async () => {
     try {
-      if (user) {
-        console.log('[FitnessProvider] Loading data from Supabase for user:', user.id);
-        try {
-          const [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
-            remoteFitnessRepo.fetchProfile(user.id),
-            remoteFitnessRepo.fetchProgressEntries(user.id),
-            remoteFitnessRepo.fetchWorkoutLogs(user.id),
-          ]);
-
-          if (remoteProfile) {
-            setProfile(remoteProfile);
-            await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
-          }
-          if (remoteProgress.length > 0) {
-            setProgress(remoteProgress);
-            await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
-          }
-          if (remoteLogs.length > 0) {
-            setWorkoutLogs(remoteLogs);
-            await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
-          }
-        } catch (remoteError) {
-          console.error('[FitnessProvider] Error loading from Supabase, falling back to local:');
-          if (remoteError instanceof Error) {
-            console.error('Error message:', remoteError.message);
-            console.error('Error stack:', remoteError.stack);
-          } else if (typeof remoteError === 'object' && remoteError !== null) {
-            console.error('Error details:', remoteError);
-          } else {
-            console.error('Unknown error:', remoteError);
-          }
-        }
-      }
-
+      console.log('[FitnessProvider] Boot sequence started');
+      
+      console.log('[FitnessProvider] Step 1: Hydrating from local cache');
       const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData] = await Promise.all([
         AsyncStorage.getItem(PROFILE_KEY),
         AsyncStorage.getItem(PROGRESS_KEY),
@@ -111,24 +80,27 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         AsyncStorage.getItem(FAVORITE_MEALS_KEY),
       ]);
 
-      if (!profile && profileData) {
+      if (profileData) {
         const parsed = safeJsonParse<FitnessProfile | null>(profileData, null);
         if (parsed) {
           setProfile(parsed);
+          console.log('[FitnessProvider] Cache: Profile hydrated');
         } else {
           await AsyncStorage.removeItem(PROFILE_KEY);
         }
       }
-      if (progress.length === 0 && progressData) {
+      if (progressData) {
         const parsed = safeJsonParse<ProgressEntry[]>(progressData, []);
         setProgress(parsed);
+        console.log('[FitnessProvider] Cache: Progress hydrated:', parsed.length);
         if (parsed.length === 0 && progressData) {
           await AsyncStorage.removeItem(PROGRESS_KEY);
         }
       }
-      if (workoutLogs.length === 0 && logsData) {
+      if (logsData) {
         const parsed = safeJsonParse<WorkoutLog[]>(logsData, []);
         setWorkoutLogs(parsed);
+        console.log('[FitnessProvider] Cache: Workout logs hydrated:', parsed.length);
         if (parsed.length === 0 && logsData) {
           await AsyncStorage.removeItem(WORKOUT_LOGS_KEY);
         }
@@ -137,6 +109,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const parsed = safeJsonParse<NutritionAssessment | null>(nutritionData, null);
         if (parsed) {
           setNutritionAssessment(parsed);
+          console.log('[FitnessProvider] Cache: Nutrition assessment hydrated');
         } else {
           await AsyncStorage.removeItem(NUTRITION_KEY);
         }
@@ -145,6 +118,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const parsed = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
         if (parsed) {
           setCurrentMealPlan(parsed);
+          console.log('[FitnessProvider] Cache: Meal plan hydrated');
         } else {
           await AsyncStorage.removeItem(MEAL_PLAN_KEY);
         }
@@ -153,6 +127,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const parsed = safeJsonParse<GroceryList | null>(groceryData, null);
         if (parsed) {
           setGroceryList(parsed);
+          console.log('[FitnessProvider] Cache: Grocery list hydrated');
         } else {
           await AsyncStorage.removeItem(GROCERY_LIST_KEY);
         }
@@ -160,6 +135,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (favoriteExercisesData) {
         const parsed = safeJsonParse<FavoriteExercise[]>(favoriteExercisesData, []);
         setFavoriteExercises(parsed);
+        console.log('[FitnessProvider] Cache: Favorite exercises hydrated:', parsed.length);
         if (parsed.length === 0 && favoriteExercisesData) {
           await AsyncStorage.removeItem(FAVORITE_EXERCISES_KEY);
         }
@@ -167,13 +143,57 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (favoriteMealsData) {
         const parsed = safeJsonParse<FavoriteMeal[]>(favoriteMealsData, []);
         setFavoriteMeals(parsed);
+        console.log('[FitnessProvider] Cache: Favorite meals hydrated:', parsed.length);
         if (parsed.length === 0 && favoriteMealsData) {
           await AsyncStorage.removeItem(FAVORITE_MEALS_KEY);
         }
       }
+
+      setIsLoading(false);
+      console.log('[FitnessProvider] Step 1 complete: UI ready with cached data');
+
+      if (user) {
+        console.log('[FitnessProvider] Step 2: Refreshing from remote for user:', user.id);
+        try {
+          const [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
+            remoteFitnessRepo.fetchProfile(user.id),
+            remoteFitnessRepo.fetchProgressEntries(user.id),
+            remoteFitnessRepo.fetchWorkoutLogs(user.id),
+          ]);
+
+          if (remoteProfile) {
+            setProfile(remoteProfile);
+            await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
+            console.log('[FitnessProvider] Remote: Profile refreshed and cached');
+          }
+          if (remoteProgress.length > 0) {
+            setProgress(remoteProgress);
+            await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
+            console.log('[FitnessProvider] Remote: Progress refreshed and cached:', remoteProgress.length);
+          }
+          if (remoteLogs.length > 0) {
+            setWorkoutLogs(remoteLogs);
+            await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
+            console.log('[FitnessProvider] Remote: Workout logs refreshed and cached:', remoteLogs.length);
+          }
+          
+          console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
+        } catch (remoteError) {
+          console.error('[FitnessProvider] Step 2 failed: Error syncing with remote, using cached data');
+          if (remoteError instanceof Error) {
+            console.error('Error message:', remoteError.message);
+            console.error('Error stack:', remoteError.stack);
+          } else if (typeof remoteError === 'object' && remoteError !== null) {
+            console.error('Error details:', remoteError);
+          } else {
+            console.error('Unknown error:', remoteError);
+          }
+        }
+      } else {
+        console.log('[FitnessProvider] Step 2 skipped: No user logged in');
+      }
     } catch (error) {
-      console.error("Error loading fitness data:", error);
-    } finally {
+      console.error("[FitnessProvider] Boot sequence error:", error);
       setIsLoading(false);
     }
   };
