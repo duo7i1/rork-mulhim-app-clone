@@ -40,7 +40,7 @@ export const remoteFitnessRepo = {
       .single();
 
     if (error) {
-      console.error('[RemoteFitnessRepo] Error upserting profile:', error);
+      console.error('[RemoteFitnessRepo] Error upserting profile:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -62,7 +62,7 @@ export const remoteFitnessRepo = {
         console.log('[RemoteFitnessRepo] Profile not found');
         return null;
       }
-      console.error('[RemoteFitnessRepo] Error fetching profile:', error);
+      console.error('[RemoteFitnessRepo] Error fetching profile:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -84,7 +84,7 @@ export const remoteFitnessRepo = {
       .single();
 
     if (error) {
-      console.error('[RemoteFitnessRepo] Error inserting progress entry:', error);
+      console.error('[RemoteFitnessRepo] Error inserting progress entry:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -102,7 +102,7 @@ export const remoteFitnessRepo = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[RemoteFitnessRepo] Error fetching progress entries:', error);
+      console.error('[RemoteFitnessRepo] Error fetching progress entries:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -124,7 +124,7 @@ export const remoteFitnessRepo = {
       .single();
 
     if (error) {
-      console.error('[RemoteFitnessRepo] Error inserting workout log:', error);
+      console.error('[RemoteFitnessRepo] Error inserting workout log:', JSON.stringify(error, null, 2));
       throw error;
     }
 
@@ -142,7 +142,7 @@ export const remoteFitnessRepo = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[RemoteFitnessRepo] Error fetching workout logs:', error);
+      console.error('[RemoteFitnessRepo] Error fetching workout logs:', JSON.stringify(error, null, 2));
       throw error;
     }
 
