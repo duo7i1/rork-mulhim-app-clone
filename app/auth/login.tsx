@@ -32,11 +32,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await signIn(email.trim(), password);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/(tabs)/plan");
-      }
+      router.replace("/");
     } catch (error: any) {
       Alert.alert("Login Failed", error.message || "Please check your credentials");
     } finally {

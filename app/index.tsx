@@ -1,12 +1,14 @@
 import { Redirect } from "expo-router";
 import { useFitness } from "@/providers/FitnessProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 
 export default function Index() {
   const { hasProfile, isLoading: profileLoading } = useFitness();
   const { hasSelectedLanguage, isLoading: languageLoading, t } = useLanguage();
+  const { user } = useAuth();
 
   if (languageLoading || profileLoading) {
     return (
@@ -21,11 +23,15 @@ export default function Index() {
     return <Redirect href="/welcome" />;
   }
 
-  if (!hasProfile) {
-    return <Redirect href="/account-prompt" />;
+  if (hasProfile) {
+    return <Redirect href="/(tabs)/plan" />;
   }
 
-  return <Redirect href="/(tabs)/plan" />;
+  if (user) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  return <Redirect href="/account-prompt" />;
 }
 
 const styles = StyleSheet.create({
