@@ -48,9 +48,20 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    let isMounted = true;
+    
+    const runLoadData = async () => {
+      if (isMounted) {
+        await loadData();
+      }
+    };
+    
+    runLoadData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   const safeJsonParse = <T,>(data: string | null, fallback: T): T => {
     if (!data) return fallback;
