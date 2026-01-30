@@ -31,7 +31,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        throw new Error('An account with this email already exists. Please sign in instead.');
+      }
+      throw error;
+    }
+
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Please sign in instead.');
+    }
+
     return data;
   };
 

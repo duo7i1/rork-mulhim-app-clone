@@ -58,7 +58,9 @@ export default function SignupScreen() {
         }]
       );
     } catch (error: any) {
-      Alert.alert("Signup Failed", error.message || "Could not create account");
+      console.error('[Signup] Error:', error);
+      const errorMessage = error.message || "Could not create account";
+      Alert.alert("Signup Failed", errorMessage);
     } finally {
       setIsLoading(false);
     }
