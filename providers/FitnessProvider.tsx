@@ -309,14 +309,24 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const addProgressEntry = async (entry: ProgressEntry) => {
     try {
-      if (user) {
-        console.log('[FitnessProvider] Saving progress entry to Supabase for user:', user.id);
-        await remoteFitnessRepo.insertProgressEntry(user.id, entry);
-      }
-
       const updated = [...progress, entry];
-      await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
       setProgress(updated);
+      await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
+      console.log('[FitnessProvider] Progress entry saved locally, weight:', entry.weight);
+
+      if (user) {
+        console.log('[FitnessProvider] Syncing progress entry to Supabase for user:', user.id);
+        try {
+          await remoteFitnessRepo.insertProgressEntry(user.id, entry);
+          console.log('[FitnessProvider] Progress entry synced to Supabase successfully');
+        } catch (error: any) {
+          if (error?.message === 'NETWORK_ERROR') {
+            console.warn('[FitnessProvider] Network error syncing progress entry, saved locally only');
+          } else {
+            console.error('[FitnessProvider] Error syncing progress entry to Supabase:', error);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error adding progress entry:", error);
       throw error;
@@ -325,14 +335,24 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const addWorkoutLog = async (log: WorkoutLog) => {
     try {
-      if (user) {
-        console.log('[FitnessProvider] Saving workout log to Supabase for user:', user.id);
-        await remoteFitnessRepo.insertWorkoutLog(user.id, log);
-      }
-
       const updated = [...workoutLogs, log];
-      await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(updated));
       setWorkoutLogs(updated);
+      await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(updated));
+      console.log('[FitnessProvider] Workout log saved locally');
+
+      if (user) {
+        console.log('[FitnessProvider] Syncing workout log to Supabase for user:', user.id);
+        try {
+          await remoteFitnessRepo.insertWorkoutLog(user.id, log);
+          console.log('[FitnessProvider] Workout log synced to Supabase successfully');
+        } catch (error: any) {
+          if (error?.message === 'NETWORK_ERROR') {
+            console.warn('[FitnessProvider] Network error syncing workout log, saved locally only');
+          } else {
+            console.error('[FitnessProvider] Error syncing workout log to Supabase:', error);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error adding workout log:", error);
       throw error;
