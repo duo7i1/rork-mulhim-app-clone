@@ -1,6 +1,6 @@
 export default {
   primary: "#114b82",
-  secondary: "#114b82",
+  secondary: "#a8947a",
   accent: "#F7931E",
   success: "#2ECC71",
   warning: "#F39C12",
@@ -20,14 +20,14 @@ export default {
   overlay: "rgba(0, 0, 0, 0.5)",
   
   gradient: {
-    start: "#114b82",
-    end: "#114b82",
+    start: "#FF6B35",
+    end: "#F7931E",
   },
   
   chart: {
-    primary: "#114b82",
+    primary: "#FF6B35",
     secondary: "#004E89",
-    tertiary: "#114b82",
+    tertiary: "#F7931E",
     grid: "#E9ECEF",
   },
 };
