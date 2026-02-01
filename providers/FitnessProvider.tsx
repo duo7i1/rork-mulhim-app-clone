@@ -230,21 +230,22 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
             console.log('[FitnessProvider] Migration: Complete, flag set');
           }
 
+          setProfile(remoteProfile);
           if (remoteProfile) {
-            setProfile(remoteProfile);
             await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
             console.log('[FitnessProvider] Remote: Profile refreshed and cached');
+          } else {
+            await AsyncStorage.removeItem(PROFILE_KEY);
+            console.log('[FitnessProvider] Remote: No profile found, cleared cache');
           }
-          if (remoteProgress.length > 0) {
-            setProgress(remoteProgress);
-            await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
-            console.log('[FitnessProvider] Remote: Progress refreshed and cached:', remoteProgress.length);
-          }
-          if (remoteLogs.length > 0) {
-            setWorkoutLogs(remoteLogs);
-            await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
-            console.log('[FitnessProvider] Remote: Workout logs refreshed and cached:', remoteLogs.length);
-          }
+          
+          setProgress(remoteProgress);
+          await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
+          console.log('[FitnessProvider] Remote: Progress refreshed and cached:', remoteProgress.length);
+          
+          setWorkoutLogs(remoteLogs);
+          await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
+          console.log('[FitnessProvider] Remote: Workout logs refreshed and cached:', remoteLogs.length);
           
           console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
         } catch (remoteError: any) {
