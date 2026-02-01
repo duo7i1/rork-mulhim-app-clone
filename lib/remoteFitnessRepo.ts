@@ -74,13 +74,22 @@ export const remoteFitnessRepo = {
           hint: error.hint,
           code: error.code,
         }, null, 2));
+        
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+          console.error('[RemoteFitnessRepo] Network error in Supabase response');
+          throw new Error('NETWORK_ERROR');
+        }
         throw error;
       }
 
       console.log('[RemoteFitnessRepo] Profile fetched successfully');
       return data.data as FitnessProfile;
     } catch (error: any) {
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+      console.error('[RemoteFitnessRepo] Exception caught:', error);
+      if (error.message === 'NETWORK_ERROR') {
+        throw error;
+      }
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.name === 'TypeError') {
         console.error('[RemoteFitnessRepo] Network error fetching profile. Supabase may be unreachable.');
         throw new Error('NETWORK_ERROR');
       }
@@ -132,13 +141,19 @@ export const remoteFitnessRepo = {
           hint: error.hint,
           code: error.code,
         }, null, 2));
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+          throw new Error('NETWORK_ERROR');
+        }
         throw error;
       }
 
       console.log('[RemoteFitnessRepo] Progress entries fetched:', data.length);
       return data.map(row => row.data as ProgressEntry);
     } catch (error: any) {
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+      if (error.message === 'NETWORK_ERROR') {
+        throw error;
+      }
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.name === 'TypeError') {
         console.error('[RemoteFitnessRepo] Network error fetching progress entries. Supabase may be unreachable.');
         throw new Error('NETWORK_ERROR');
       }
@@ -190,13 +205,19 @@ export const remoteFitnessRepo = {
           hint: error.hint,
           code: error.code,
         }, null, 2));
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+          throw new Error('NETWORK_ERROR');
+        }
         throw error;
       }
 
       console.log('[RemoteFitnessRepo] Workout logs fetched:', data.length);
       return data.map(row => row.data as WorkoutLog);
     } catch (error: any) {
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+      if (error.message === 'NETWORK_ERROR') {
+        throw error;
+      }
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.name === 'TypeError') {
         console.error('[RemoteFitnessRepo] Network error fetching workout logs. Supabase may be unreachable.');
         throw new Error('NETWORK_ERROR');
       }
