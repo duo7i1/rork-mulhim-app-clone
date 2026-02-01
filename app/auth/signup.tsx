@@ -60,7 +60,22 @@ export default function SignupScreen() {
     } catch (error: any) {
       console.error('[Signup] Error:', error);
       const errorMessage = error.message || "Could not create account";
-      Alert.alert("Signup Failed", errorMessage);
+      
+      if (errorMessage.includes('already exists') || errorMessage.includes('already registered')) {
+        Alert.alert(
+          "Account Exists",
+          "An account with this email already exists.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Sign In", 
+              onPress: () => router.push("/auth/login")
+            }
+          ]
+        );
+      } else {
+        Alert.alert("Signup Failed", errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
