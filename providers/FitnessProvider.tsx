@@ -156,7 +156,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         setIsLoading(false);
         console.log('[FitnessProvider] Step 1 complete: UI ready with cached data (no user)');
       } else {
-        console.log('[FitnessProvider] Step 1 complete: Cached data loaded, waiting for remote check');
+        console.log('[FitnessProvider] Step 1 complete: Cached data loaded, keeping isLoading=true until remote check');
       }
 
       if (!user) {
