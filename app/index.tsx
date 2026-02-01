@@ -23,8 +23,8 @@ export default function Index() {
     return <Redirect href="/welcome" />;
   }
 
-  if (user && hasProfile && profile) {
-    console.log('[Index] User logged in with profile, redirecting to plan');
+  if (user && hasProfile) {
+    console.log('[Index] User logged in with profile in Supabase, redirecting to plan');
     return <Redirect href="/(tabs)/plan" />;
   }
 
