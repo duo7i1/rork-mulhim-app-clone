@@ -81,6 +81,10 @@ export default function AccountPromptScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>ملهم</Text>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -161,5 +165,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600" as const,
     color: Colors.text,
+  },
+  footer: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  footerText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    fontWeight: "600" as const,
   },
 });
