@@ -52,7 +52,7 @@ export default function SignupScreen() {
             if (router.canGoBack()) {
               router.back();
             } else {
-              router.replace("/(tabs)/plan" as any);
+              router.replace("/(tabs)/plan");
             }
           } 
         }]
@@ -69,7 +69,7 @@ export default function SignupScreen() {
             { text: "Cancel", style: "cancel" },
             { 
               text: "Sign In", 
-              onPress: () => router.push("/auth/login" as any)
+              onPress: () => router.push("/auth/login")
             }
           ]
         );

@@ -42,7 +42,7 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.replace("/auth/login" as any);
+      router.replace("/auth/login");
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -120,7 +120,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{t.profile.advancedCustomization}</Text>
           <TouchableOpacity
             style={styles.bioinformaticsCard}
-            onPress={() => router.push("/bioinformatics" as any)}
+            onPress={() => router.push("/bioinformatics")}
           >
             <View style={styles.bioinformaticsIcon}>
               <Dna size={28} color={Colors.primary} />

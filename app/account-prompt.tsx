@@ -35,11 +35,11 @@ export default function AccountPromptScreen() {
   }, [fadeAnim, scaleAnim]);
 
   const handleLogin = () => {
-    router.push("/auth/login" as any);
+    router.push("/auth/login");
   };
 
   const handleSkip = () => {
-    router.replace("/onboarding" as any);
+    router.replace("/onboarding");
   };
 
   return (
