@@ -27,6 +27,8 @@ const MEAL_PLAN_KEY = "@mulhim_meal_plan";
 const GROCERY_LIST_KEY = "@mulhim_grocery_list";
 const FAVORITE_EXERCISES_KEY = "@mulhim_favorite_exercises";
 const FAVORITE_MEALS_KEY = "@mulhim_favorite_meals";
+const WEEK_PLAN_KEY = "@mulhim_week_plan";
+const NUTRITION_PLAN_KEY = "@mulhim_nutrition_plan";
 
 export const [FitnessProvider, useFitness] = createContextHook(() => {
   const { user } = useAuth();
@@ -72,7 +74,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.log('[FitnessProvider] Boot sequence started');
 
       console.log('[FitnessProvider] Step 1: Hydrating from local cache');
-      const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData] = await Promise.all([
+      const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData, weekPlanData, nutritionPlanData] = await Promise.all([
         AsyncStorage.getItem(PROFILE_KEY),
         AsyncStorage.getItem(PROGRESS_KEY),
         AsyncStorage.getItem(WORKOUT_LOGS_KEY),
@@ -81,6 +83,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         AsyncStorage.getItem(GROCERY_LIST_KEY),
         AsyncStorage.getItem(FAVORITE_EXERCISES_KEY),
         AsyncStorage.getItem(FAVORITE_MEALS_KEY),
+        AsyncStorage.getItem(WEEK_PLAN_KEY),
+        AsyncStorage.getItem(NUTRITION_PLAN_KEY),
       ]);
 
       if (profileData) {
@@ -133,6 +137,20 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         setFavoriteMeals(parsed);
         console.log('[FitnessProvider] Cache: Favorite meals hydrated:', parsed.length);
       }
+      if (weekPlanData) {
+        const parsed = safeJsonParse<WeeklyPlan | null>(weekPlanData, null);
+        if (parsed) {
+          setCurrentWeekPlan(parsed);
+          console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions?.length, 'sessions');
+        }
+      }
+      if (nutritionPlanData) {
+        const parsed = safeJsonParse<NutritionPlan | null>(nutritionPlanData, null);
+        if (parsed) {
+          setNutritionPlan(parsed);
+          console.log('[FitnessProvider] Cache: Nutrition plan hydrated');
+        }
+      }
 
       if (!user) {
         setIsLoading(false);
@@ -184,9 +202,21 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         }
 
         try {
+          const remoteWorkoutPlan = await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id);
+          if (remoteWorkoutPlan && remoteWorkoutPlan.sessions.length > 0) {
+            setCurrentWeekPlan(remoteWorkoutPlan);
+            await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
+            console.log('[FitnessProvider] Remote: Workout plan refreshed with', remoteWorkoutPlan.sessions.length, 'sessions');
+          }
+        } catch (wpErr) {
+          console.warn('[FitnessProvider] Could not fetch workout plan:', wpErr);
+        }
+
+        try {
           const remoteNutrition = await remoteFitnessRepo.fetchActiveNutritionPlan(user.id);
           if (remoteNutrition) {
             setNutritionPlan(remoteNutrition.plan);
+            await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(remoteNutrition.plan));
             if (remoteNutrition.mealPlan.days.length > 0) {
               setCurrentMealPlan(remoteNutrition.mealPlan);
               await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
@@ -302,11 +332,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   };
 
-  const updateWeekPlan = (plan: WeeklyPlan) => {
+  const updateWeekPlan = async (plan: WeeklyPlan) => {
     setCurrentWeekPlan(plan);
+    await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(plan));
+    console.log('[FitnessProvider] Week plan saved locally with', plan.sessions?.length, 'sessions');
 
     if (user) {
-      remoteFitnessRepo.saveWorkoutPlan(user.id, plan).catch((err) => {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, plan).then(() => {
+        console.log('[FitnessProvider] Workout plan synced to Supabase');
+      }).catch((err) => {
         console.warn('[FitnessProvider] Error saving workout plan to Supabase:', err);
       });
     }
@@ -336,10 +370,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    setCurrentWeekPlan({
-      ...currentWeekPlan,
-      sessions: updatedSessions,
-    });
+    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    setCurrentWeekPlan(updatedPlan);
+    AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
   };
 
   const toggleSessionCompletion = (sessionId: string) => {
@@ -358,10 +391,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    setCurrentWeekPlan({
-      ...currentWeekPlan,
-      sessions: updatedSessions,
-    });
+    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    setCurrentWeekPlan(updatedPlan);
+    AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
   };
 
   const updateExercise = (sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
@@ -380,10 +412,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    setCurrentWeekPlan({
-      ...currentWeekPlan,
-      sessions: updatedSessions,
-    });
+    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    setCurrentWeekPlan(updatedPlan);
+    AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
   };
 
   const calculateBMR = (): number => {
@@ -452,6 +483,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (assessment.completed && profile) {
         const plan = generateNutritionPlan(assessment);
         setNutritionPlan(plan);
+        await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(plan));
       }
     } catch (error) {
       console.error("Error saving nutrition assessment:", error);
