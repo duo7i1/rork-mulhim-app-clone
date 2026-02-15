@@ -46,6 +46,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const [remoteProfileChecked, setRemoteProfileChecked] = useState<boolean>(false);
   const [hasRemoteProfile, setHasRemoteProfile] = useState<boolean>(false);
 
+  const [loadError, setLoadError] = useState<boolean>(false);
+
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,8 +71,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      setRemoteProfileChecked(false);
-      setHasRemoteProfile(false);
+      setLoadError(false);
       console.log('[FitnessProvider] Boot sequence started');
 
       console.log('[FitnessProvider] Step 1: Hydrating from local cache');
@@ -160,6 +161,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         return;
       }
 
+      setRemoteProfileChecked(false);
+      setHasRemoteProfile(false);
+
       console.log('[FitnessProvider] Step 2: Refreshing from Supabase for user:', user.id);
       try {
         const [remoteProfile, remoteProgress, remoteLogs, remoteFavExercises, remoteFavMeals] = await Promise.all([
@@ -201,8 +205,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           console.log('[FitnessProvider] Remote: Favorite meals refreshed:', remoteFavMeals.length);
         }
 
+        let remoteWorkoutPlan: WeeklyPlan | null = null;
         try {
-          const remoteWorkoutPlan = await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id);
+          remoteWorkoutPlan = await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id);
           if (remoteWorkoutPlan && remoteWorkoutPlan.sessions.length > 0) {
             setCurrentWeekPlan(remoteWorkoutPlan);
             await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
@@ -212,8 +217,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           console.warn('[FitnessProvider] Could not fetch workout plan:', wpErr);
         }
 
+        let remoteNutrition: { plan: NutritionPlan; mealPlan: WeeklyMealPlan } | null = null;
         try {
-          const remoteNutrition = await remoteFitnessRepo.fetchActiveNutritionPlan(user.id);
+          remoteNutrition = await remoteFitnessRepo.fetchActiveNutritionPlan(user.id);
           if (remoteNutrition) {
             setNutritionPlan(remoteNutrition.plan);
             await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(remoteNutrition.plan));
@@ -227,15 +233,55 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           console.warn('[FitnessProvider] Could not fetch nutrition plan:', npErr);
         }
 
+        if (!remoteProfile && profileData) {
+          console.log('[FitnessProvider] No remote profile but local cache exists, pushing to Supabase');
+          const localProfile = safeJsonParse<FitnessProfile | null>(profileData, null);
+          if (localProfile) {
+            remoteFitnessRepo.upsertProfile(user.id, localProfile).then(() => {
+              setHasRemoteProfile(true);
+              console.log('[FitnessProvider] Local profile pushed to Supabase');
+            }).catch((err) => {
+              console.warn('[FitnessProvider] Error pushing local profile to Supabase:', err);
+            });
+          }
+        }
+
+        if (!remoteWorkoutPlan && weekPlanData) {
+          console.log('[FitnessProvider] No remote workout plan but local cache exists, pushing to Supabase');
+          const localWeekPlan = safeJsonParse<WeeklyPlan | null>(weekPlanData, null);
+          if (localWeekPlan && localWeekPlan.sessions?.length > 0) {
+            remoteFitnessRepo.saveWorkoutPlan(user.id, localWeekPlan).then(() => {
+              console.log('[FitnessProvider] Local workout plan pushed to Supabase');
+            }).catch((err) => {
+              console.warn('[FitnessProvider] Error pushing local workout plan:', err);
+            });
+          }
+        }
+
+        if (!remoteNutrition && nutritionPlanData && mealPlanData) {
+          console.log('[FitnessProvider] No remote nutrition plan but local cache exists, pushing to Supabase');
+          const localNutritionPlan = safeJsonParse<NutritionPlan | null>(nutritionPlanData, null);
+          const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
+          if (localNutritionPlan) {
+            remoteFitnessRepo.saveNutritionPlan(user.id, localNutritionPlan, localMealPlan || undefined).then(() => {
+              console.log('[FitnessProvider] Local nutrition plan pushed to Supabase');
+            }).catch((err) => {
+              console.warn('[FitnessProvider] Error pushing local nutrition plan:', err);
+            });
+          }
+        }
+
         console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
       } catch (fetchError: any) {
         setRemoteProfileChecked(true);
-        setHasRemoteProfile(false);
+        setLoadError(true);
+        const hasLocalProfile = !!profileData;
+        setHasRemoteProfile(hasLocalProfile);
         setIsLoading(false);
         if (fetchError?.message === 'NETWORK_ERROR') {
-          console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data');
+          console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data. hasLocalProfile:', hasLocalProfile);
         } else {
-          console.error('[FitnessProvider] Step 2 failed:', fetchError);
+          console.error('[FitnessProvider] Step 2 failed:', fetchError, 'falling back to local cache. hasLocalProfile:', hasLocalProfile);
         }
       }
     } catch (error) {
@@ -484,6 +530,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const plan = generateNutritionPlan(assessment);
         setNutritionPlan(plan);
         await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(plan));
+
+        if (user) {
+          remoteFitnessRepo.saveNutritionPlan(user.id, plan).then(() => {
+            console.log('[FitnessProvider] Nutrition plan synced to Supabase after assessment');
+          }).catch((err) => {
+            console.warn('[FitnessProvider] Error syncing nutrition plan:', err);
+          });
+        }
       }
     } catch (error) {
       console.error("Error saving nutrition assessment:", error);
@@ -964,6 +1018,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     calculateTDEE,
     getTargetCalories,
     getCurrentStreak,
-    hasProfile: user ? (remoteProfileChecked ? hasRemoteProfile : false) : !!profile,
+    hasProfile: user
+      ? (remoteProfileChecked ? (hasRemoteProfile || !!profile) : !!profile)
+      : !!profile,
+    loadError,
   };
 });
