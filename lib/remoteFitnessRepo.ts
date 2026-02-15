@@ -262,9 +262,11 @@ export const remoteFitnessRepo = {
       if (planError) handleSupabaseError(planError, 'Error saving workout plan');
       const planId = planData.id;
 
-      for (const session of plan.sessions) {
+      for (let si = 0; si < plan.sessions.length; si++) {
+        const session = plan.sessions[si];
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayIndex = dayNames.indexOf(session.day) + 1 || 1;
+        const matched = dayNames.indexOf(session.day) + 1;
+        const dayIndex = matched > 0 ? matched : (si + 1);
 
         const { data: sessionData, error: sessionError } = await supabase
           .from('workout_sessions')
@@ -280,7 +282,7 @@ export const remoteFitnessRepo = {
           .single();
 
         if (sessionError) {
-          console.error('[RemoteRepo] Error saving session:', sessionError);
+          console.error('[RemoteRepo] Error saving session:', JSON.stringify(sessionError));
           continue;
         }
 
