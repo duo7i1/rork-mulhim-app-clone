@@ -27,16 +27,13 @@ const MEAL_PLAN_KEY = "@mulhim_meal_plan";
 const GROCERY_LIST_KEY = "@mulhim_grocery_list";
 const FAVORITE_EXERCISES_KEY = "@mulhim_favorite_exercises";
 const FAVORITE_MEALS_KEY = "@mulhim_favorite_meals";
-const MIGRATION_DONE_KEY = "@mulhim_migration_done";
 
 export const [FitnessProvider, useFitness] = createContextHook(() => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<FitnessProfile | null>(null);
   const [progress, setProgress] = useState<ProgressEntry[]>([]);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
-  const [currentWeekPlan, setCurrentWeekPlan] = useState<WeeklyPlan | null>(
-    null
-  );
+  const [currentWeekPlan, setCurrentWeekPlan] = useState<WeeklyPlan | null>(null);
   const [nutritionAssessment, setNutritionAssessment] = useState<NutritionAssessment | null>(null);
   const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
   const [currentMealPlan, setCurrentMealPlan] = useState<WeeklyMealPlan | null>(null);
@@ -70,7 +67,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const loadData = async () => {
     try {
       console.log('[FitnessProvider] Boot sequence started');
-      
+
       console.log('[FitnessProvider] Step 1: Hydrating from local cache');
       const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData] = await Promise.all([
         AsyncStorage.getItem(PROFILE_KEY),
@@ -96,25 +93,17 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const parsed = safeJsonParse<ProgressEntry[]>(progressData, []);
         setProgress(parsed);
         console.log('[FitnessProvider] Cache: Progress hydrated:', parsed.length);
-        if (parsed.length === 0 && progressData) {
-          await AsyncStorage.removeItem(PROGRESS_KEY);
-        }
       }
       if (logsData) {
         const parsed = safeJsonParse<WorkoutLog[]>(logsData, []);
         setWorkoutLogs(parsed);
         console.log('[FitnessProvider] Cache: Workout logs hydrated:', parsed.length);
-        if (parsed.length === 0 && logsData) {
-          await AsyncStorage.removeItem(WORKOUT_LOGS_KEY);
-        }
       }
       if (nutritionData) {
         const parsed = safeJsonParse<NutritionAssessment | null>(nutritionData, null);
         if (parsed) {
           setNutritionAssessment(parsed);
           console.log('[FitnessProvider] Cache: Nutrition assessment hydrated');
-        } else {
-          await AsyncStorage.removeItem(NUTRITION_KEY);
         }
       }
       if (mealPlanData) {
@@ -122,8 +111,6 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         if (parsed) {
           setCurrentMealPlan(parsed);
           console.log('[FitnessProvider] Cache: Meal plan hydrated');
-        } else {
-          await AsyncStorage.removeItem(MEAL_PLAN_KEY);
         }
       }
       if (groceryData) {
@@ -131,136 +118,91 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         if (parsed) {
           setGroceryList(parsed);
           console.log('[FitnessProvider] Cache: Grocery list hydrated');
-        } else {
-          await AsyncStorage.removeItem(GROCERY_LIST_KEY);
         }
       }
       if (favoriteExercisesData) {
         const parsed = safeJsonParse<FavoriteExercise[]>(favoriteExercisesData, []);
         setFavoriteExercises(parsed);
         console.log('[FitnessProvider] Cache: Favorite exercises hydrated:', parsed.length);
-        if (parsed.length === 0 && favoriteExercisesData) {
-          await AsyncStorage.removeItem(FAVORITE_EXERCISES_KEY);
-        }
       }
       if (favoriteMealsData) {
         const parsed = safeJsonParse<FavoriteMeal[]>(favoriteMealsData, []);
         setFavoriteMeals(parsed);
         console.log('[FitnessProvider] Cache: Favorite meals hydrated:', parsed.length);
-        if (parsed.length === 0 && favoriteMealsData) {
-          await AsyncStorage.removeItem(FAVORITE_MEALS_KEY);
-        }
       }
 
       if (!user) {
         setIsLoading(false);
-        console.log('[FitnessProvider] Step 1 complete: UI ready with cached data (no user)');
-      } else {
-        console.log('[FitnessProvider] Step 1 complete: Cached data loaded, keeping isLoading=true until remote check');
-      }
-
-      if (!user) {
-        console.log('[FitnessProvider] No user logged in, using local cache only');
         setRemoteProfileChecked(true);
         setHasRemoteProfile(false);
+        console.log('[FitnessProvider] No user logged in, using local cache only');
         return;
       }
 
-      if (user) {
-        console.log('[FitnessProvider] Step 2: Refreshing from remote for user:', user.id);
+      console.log('[FitnessProvider] Step 2: Refreshing from Supabase for user:', user.id);
+      try {
+        const [remoteProfile, remoteProgress, remoteLogs, remoteFavExercises, remoteFavMeals] = await Promise.all([
+          remoteFitnessRepo.fetchProfile(user.id),
+          remoteFitnessRepo.fetchProgressEntries(user.id),
+          remoteFitnessRepo.fetchWorkoutLogs(user.id),
+          remoteFitnessRepo.fetchFavoriteExercises(user.id),
+          remoteFitnessRepo.fetchFavoriteMeals(user.id),
+        ]);
+
+        setRemoteProfileChecked(true);
+        setHasRemoteProfile(!!remoteProfile);
+        setIsLoading(false);
+        console.log('[FitnessProvider] Supabase check: hasRemoteProfile =', !!remoteProfile);
+
+        if (remoteProfile) {
+          setProfile(remoteProfile);
+          await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
+          console.log('[FitnessProvider] Remote: Profile refreshed and cached');
+        }
+        if (remoteProgress.length > 0) {
+          setProgress(remoteProgress);
+          await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
+          console.log('[FitnessProvider] Remote: Progress refreshed:', remoteProgress.length);
+        }
+        if (remoteLogs.length > 0) {
+          setWorkoutLogs(remoteLogs);
+          await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
+          console.log('[FitnessProvider] Remote: Workout logs refreshed:', remoteLogs.length);
+        }
+        if (remoteFavExercises.length > 0) {
+          setFavoriteExercises(remoteFavExercises);
+          await AsyncStorage.setItem(FAVORITE_EXERCISES_KEY, JSON.stringify(remoteFavExercises));
+          console.log('[FitnessProvider] Remote: Favorite exercises refreshed:', remoteFavExercises.length);
+        }
+        if (remoteFavMeals.length > 0) {
+          setFavoriteMeals(remoteFavMeals);
+          await AsyncStorage.setItem(FAVORITE_MEALS_KEY, JSON.stringify(remoteFavMeals));
+          console.log('[FitnessProvider] Remote: Favorite meals refreshed:', remoteFavMeals.length);
+        }
+
         try {
-          const migrationDone = await AsyncStorage.getItem(MIGRATION_DONE_KEY);
-          
-          let remoteProfile = null;
-          let remoteProgress: ProgressEntry[] = [];
-          let remoteLogs: WorkoutLog[] = [];
-
-          try {
-            [remoteProfile, remoteProgress, remoteLogs] = await Promise.all([
-              remoteFitnessRepo.fetchProfile(user.id),
-              remoteFitnessRepo.fetchProgressEntries(user.id),
-              remoteFitnessRepo.fetchWorkoutLogs(user.id),
-            ]);
-            
-            setRemoteProfileChecked(true);
-            setHasRemoteProfile(!!remoteProfile);
-            setIsLoading(false);
-            console.log('[FitnessProvider] Supabase check: hasRemoteProfile =', !!remoteProfile);
-          } catch (fetchError: any) {
-            if (fetchError.message === 'NETWORK_ERROR') {
-              console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data only');
-              setRemoteProfileChecked(true);
-              setHasRemoteProfile(false);
-              setIsLoading(false);
-              console.log('[FitnessProvider] Step 2 complete: Running in offline mode');
-              return;
+          const remoteNutrition = await remoteFitnessRepo.fetchActiveNutritionPlan(user.id);
+          if (remoteNutrition) {
+            setNutritionPlan(remoteNutrition.plan);
+            if (remoteNutrition.mealPlan.days.length > 0) {
+              setCurrentMealPlan(remoteNutrition.mealPlan);
+              await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
             }
-            throw fetchError;
+            console.log('[FitnessProvider] Remote: Nutrition plan refreshed');
           }
+        } catch (npErr) {
+          console.warn('[FitnessProvider] Could not fetch nutrition plan:', npErr);
+        }
 
-          if (!migrationDone) {
-            console.log('[FitnessProvider] Migration: Checking for local data to upload');
-            const localProfile = safeJsonParse<FitnessProfile | null>(profileData || '', null);
-            const localProgress = safeJsonParse<ProgressEntry[]>(progressData || '', []);
-            const localLogs = safeJsonParse<WorkoutLog[]>(logsData || '', []);
-
-            if (!remoteProfile && localProfile) {
-              console.log('[FitnessProvider] Migration: Uploading local profile to remote');
-              await remoteFitnessRepo.upsertProfile(user.id, localProfile);
-              remoteProfile = localProfile;
-              setHasRemoteProfile(true);
-              console.log('[FitnessProvider] Migration: Profile uploaded, hasRemoteProfile = true');
-            }
-            
-            if (remoteProgress.length === 0 && localProgress.length > 0) {
-              console.log('[FitnessProvider] Migration: Uploading', localProgress.length, 'progress entries to remote');
-              for (const entry of localProgress) {
-                await remoteFitnessRepo.insertProgressEntry(user.id, entry);
-              }
-            }
-            
-            if (remoteLogs.length === 0 && localLogs.length > 0) {
-              console.log('[FitnessProvider] Migration: Uploading', localLogs.length, 'workout logs to remote');
-              for (const log of localLogs) {
-                await remoteFitnessRepo.insertWorkoutLog(user.id, log);
-              }
-            }
-
-            await AsyncStorage.setItem(MIGRATION_DONE_KEY, 'true');
-            console.log('[FitnessProvider] Migration: Complete, flag set');
-          }
-
-          if (remoteProfile) {
-            setProfile(remoteProfile);
-            await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
-            console.log('[FitnessProvider] Remote: Profile refreshed and cached');
-          }
-          if (remoteProgress.length > 0) {
-            setProgress(remoteProgress);
-            await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
-            console.log('[FitnessProvider] Remote: Progress refreshed and cached:', remoteProgress.length);
-          }
-          if (remoteLogs.length > 0) {
-            setWorkoutLogs(remoteLogs);
-            await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
-            console.log('[FitnessProvider] Remote: Workout logs refreshed and cached:', remoteLogs.length);
-          }
-          
-          console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
-        } catch (remoteError: any) {
-          setRemoteProfileChecked(true);
-          setHasRemoteProfile(false);
-          setIsLoading(false);
-          if (remoteError?.message === 'NETWORK_ERROR') {
-            console.warn('[FitnessProvider] Network error during migration, skipping remote sync');
-          } else {
-            console.error('[FitnessProvider] Step 2 failed: Error syncing with remote, using cached data');
-            if (remoteError instanceof Error) {
-              console.error('[FitnessProvider] Error message:', remoteError.message);
-            } else {
-              console.error('[FitnessProvider] Error details:', JSON.stringify(remoteError, null, 2));
-            }
-          }
+        console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
+      } catch (fetchError: any) {
+        setRemoteProfileChecked(true);
+        setHasRemoteProfile(false);
+        setIsLoading(false);
+        if (fetchError?.message === 'NETWORK_ERROR') {
+          console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data');
+        } else {
+          console.error('[FitnessProvider] Step 2 failed:', fetchError);
         }
       }
     } catch (error) {
@@ -296,7 +238,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
       setProfile(newProfile);
-      
+
       if (user) {
         setHasRemoteProfile(true);
         console.log('[FitnessProvider] Profile saved, hasRemoteProfile = true');
@@ -315,15 +257,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.log('[FitnessProvider] Progress entry saved locally, weight:', entry.weight);
 
       if (user) {
-        console.log('[FitnessProvider] Syncing progress entry to Supabase for user:', user.id);
         try {
           await remoteFitnessRepo.insertProgressEntry(user.id, entry);
-          console.log('[FitnessProvider] Progress entry synced to Supabase successfully');
+          console.log('[FitnessProvider] Progress entry synced to Supabase');
         } catch (error: any) {
           if (error?.message === 'NETWORK_ERROR') {
-            console.warn('[FitnessProvider] Network error syncing progress entry, saved locally only');
+            console.warn('[FitnessProvider] Network error syncing progress entry');
           } else {
-            console.error('[FitnessProvider] Error syncing progress entry to Supabase:', error);
+            console.error('[FitnessProvider] Error syncing progress entry:', error);
           }
         }
       }
@@ -341,15 +282,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.log('[FitnessProvider] Workout log saved locally');
 
       if (user) {
-        console.log('[FitnessProvider] Syncing workout log to Supabase for user:', user.id);
         try {
           await remoteFitnessRepo.insertWorkoutLog(user.id, log);
-          console.log('[FitnessProvider] Workout log synced to Supabase successfully');
+          console.log('[FitnessProvider] Workout log synced to Supabase');
         } catch (error: any) {
           if (error?.message === 'NETWORK_ERROR') {
-            console.warn('[FitnessProvider] Network error syncing workout log, saved locally only');
+            console.warn('[FitnessProvider] Network error syncing workout log');
           } else {
-            console.error('[FitnessProvider] Error syncing workout log to Supabase:', error);
+            console.error('[FitnessProvider] Error syncing workout log:', error);
           }
         }
       }
@@ -361,6 +301,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const updateWeekPlan = (plan: WeeklyPlan) => {
     setCurrentWeekPlan(plan);
+
+    if (user) {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, plan).catch((err) => {
+        console.warn('[FitnessProvider] Error saving workout plan to Supabase:', err);
+      });
+    }
   };
 
   const toggleExerciseCompletion = (sessionId: string, exerciseId: string) => {
@@ -439,9 +385,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const calculateBMR = (): number => {
     if (!profile) return 0;
-
     const { weight, height, age, gender } = profile;
-
     if (gender === "male") {
       return 10 * weight + 6.25 * height - 5 * age + 5;
     } else {
@@ -454,16 +398,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     if (!profile) return bmr;
 
     const activityMultipliers: Record<number, number> = {
-      0: 1.2,
-      1: 1.2,
-      2: 1.375,
-      3: 1.55,
-      4: 1.55,
-      5: 1.725,
-      6: 1.725,
-      7: 1.9,
+      0: 1.2, 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.55, 5: 1.725, 6: 1.725, 7: 1.9,
     };
-
     const multiplier = activityMultipliers[profile.availableDays] || 1.55;
     return bmr * multiplier;
   };
@@ -471,24 +407,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const getTargetCalories = (): number => {
     const tdee = calculateTDEE();
     if (!profile) return tdee;
-
     switch (profile.goal) {
-      case "fat_loss":
-        return tdee - 500;
-      case "muscle_gain":
-        return tdee + 300;
-      default:
-        return tdee;
+      case "fat_loss": return tdee - 500;
+      case "muscle_gain": return tdee + 300;
+      default: return tdee;
     }
   };
 
   const getCurrentStreak = (): number => {
     if (workoutLogs.length === 0) return 0;
-
     const sortedLogs = [...workoutLogs].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
@@ -496,26 +426,23 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     for (const log of sortedLogs) {
       const logDate = new Date(log.date);
       logDate.setHours(0, 0, 0, 0);
-
       const diffDays = Math.floor(
         (currentDate.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24)
       );
-
       if (diffDays === streak) {
         streak++;
       } else if (diffDays > streak) {
         break;
       }
     }
-
     return streak;
   };
 
   const saveNutritionAssessment = async (assessment: NutritionAssessment) => {
     try {
       if (assessment.completed && !assessment.favoriteMeals) {
-        const favoriteMeals = extractFavoriteMealsFromHistory(assessment.dietHistory);
-        assessment.favoriteMeals = favoriteMeals;
+        const favMeals = extractFavoriteMealsFromHistory(assessment.dietHistory);
+        assessment.favoriteMeals = favMeals;
       }
       await AsyncStorage.setItem(NUTRITION_KEY, JSON.stringify(assessment));
       setNutritionAssessment(assessment);
@@ -535,7 +462,6 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
     const targetCalories = getTargetCalories();
     const recommendations: string[] = [];
-
     let dietPattern: DietPattern = "balanced";
     let proteinPriority = false;
     let carbTiming: "around_workout" | "evenly_distributed" = "evenly_distributed";
@@ -568,7 +494,6 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
 
     const macros = calculateMacros(targetCalories, dietPattern, profile);
-
     const mealDistribution = calculateMealDistribution(
       assessment.mealStructure || "3_meals",
       macros.protein,
@@ -578,7 +503,6 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     if (assessment.ffq.vegetables === "rarely" || assessment.ffq.vegetables === "never") {
       recommendations.push("زيادة تناول الخضروات تدريجياً");
     }
-
     if (assessment.ffq.fish === "rarely" || assessment.ffq.fish === "never") {
       recommendations.push("إضافة السمك للحصول على أوميغا 3");
     }
@@ -602,10 +526,10 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const calculateMacros = (
     calories: number,
     pattern: DietPattern,
-    profile: FitnessProfile
+    prof: FitnessProfile
   ): MacroDistribution => {
     const proteinPerKg = pattern === "high_protein_carbs" ? 2.0 : pattern === "high_protein" ? 1.8 : 1.6;
-    const protein = profile.weight * proteinPerKg;
+    const protein = prof.weight * proteinPerKg;
     const proteinCalories = protein * 4;
 
     let carbPercentage = 0.4;
@@ -636,58 +560,31 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const calculateMealDistribution = (
     structure: "1_meal_snacks" | "2_meals" | "3_meals" | "3_meals_snacks",
     totalProtein: number,
-    trainingDays: number
+    _trainingDays: number
   ) => {
     let mealsCount = 3;
     let snacksCount = 0;
 
     switch (structure) {
-      case "1_meal_snacks":
-        mealsCount = 1;
-        snacksCount = 4;
-        break;
-      case "2_meals":
-        mealsCount = 2;
-        snacksCount = 3;
-        break;
-      case "3_meals":
-        mealsCount = 3;
-        snacksCount = 2;
-        break;
-      case "3_meals_snacks":
-        mealsCount = 3;
-        snacksCount = 3;
-        break;
+      case "1_meal_snacks": mealsCount = 1; snacksCount = 4; break;
+      case "2_meals": mealsCount = 2; snacksCount = 3; break;
+      case "3_meals": mealsCount = 3; snacksCount = 2; break;
+      case "3_meals_snacks": mealsCount = 3; snacksCount = 3; break;
     }
 
     const proteinPerMeal = totalProtein / (mealsCount + snacksCount * 0.3);
-
-    return {
-      mealsCount,
-      snacksCount,
-      proteinPerMeal: Math.round(proteinPerMeal),
-    };
+    return { mealsCount, snacksCount, proteinPerMeal: Math.round(proteinPerMeal) };
   };
 
   const estimateCurrentProtein = (dietHistory: NutritionAssessment["dietHistory"]): number => {
-    const allMeals = [
-      ...dietHistory.breakfast,
-      ...dietHistory.lunch,
-      ...dietHistory.dinner,
-      ...dietHistory.snacks,
-    ];
-
+    const allMeals = [...dietHistory.breakfast, ...dietHistory.lunch, ...dietHistory.dinner, ...dietHistory.snacks];
     let proteinEstimate = 0;
     const proteinKeywords = ["دجاج", "لحم", "سمك", "بيض", "بروتين", "chicken", "meat", "fish", "egg"];
-
     allMeals.forEach((meal) => {
       const lowerMeal = meal.toLowerCase();
       const hasProtein = proteinKeywords.some((keyword) => lowerMeal.includes(keyword));
-      if (hasProtein) {
-        proteinEstimate += 25;
-      }
+      if (hasProtein) proteinEstimate += 25;
     });
-
     return proteinEstimate;
   };
 
@@ -707,21 +604,20 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           name: mealName,
           nameAr: mealName,
           type: value.type,
-          calories: estimateMealCalories(mealName, value.type),
+          calories: estimateMealCalories(value.type),
           protein: estimateMealProtein(mealName, value.type),
           carbs: estimateMealCarbs(mealName, value.type),
-          fats: estimateMealFats(mealName, value.type),
+          fats: estimateMealFats(value.type),
           ingredients: [mealName],
           ingredientsAr: [mealName],
         };
         favorites.push(meal);
       });
     });
-
     return favorites;
   };
 
-  const estimateMealCalories = (mealName: string, type: "breakfast" | "lunch" | "dinner" | "snack"): number => {
+  const estimateMealCalories = (type: "breakfast" | "lunch" | "dinner" | "snack"): number => {
     if (type === "snack") return 150;
     if (type === "breakfast") return 350;
     return 500;
@@ -755,7 +651,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     return 40;
   };
 
-  const estimateMealFats = (mealName: string, type: "breakfast" | "lunch" | "dinner" | "snack"): number => {
+  const estimateMealFats = (type: "breakfast" | "lunch" | "dinner" | "snack"): number => {
     if (type === "snack") return 6;
     if (type === "breakfast") return 12;
     return 18;
@@ -765,6 +661,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     try {
       await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(plan));
       setCurrentMealPlan(plan);
+
+      if (user && nutritionPlan) {
+        remoteFitnessRepo.saveNutritionPlan(user.id, nutritionPlan, plan).catch((err) => {
+          console.warn('[FitnessProvider] Error syncing meal plan to Supabase:', err);
+        });
+      }
     } catch (error) {
       console.error("Error saving meal plan:", error);
     }
@@ -781,16 +683,10 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const toggleGroceryItem = async (itemId: string) => {
     if (!groceryList) return;
-
     const updatedItems = groceryList.items.map((item) =>
       item.id === itemId ? { ...item, checked: !item.checked } : item
     );
-
-    const updatedList = {
-      ...groceryList,
-      items: updatedItems,
-    };
-
+    const updatedList = { ...groceryList, items: updatedItems };
     await saveGroceryList(updatedList);
   };
 
@@ -800,57 +696,36 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
         const completedMeals = day.completedMeals || {
-          breakfast: false,
-          lunch: false,
-          dinner: false,
+          breakfast: false, lunch: false, dinner: false,
           snacks: day.snacks.map(() => false),
         };
 
         if (mealType === "snack" && snackIndex !== undefined) {
           const snacksCompletion = completedMeals.snacks || day.snacks.map(() => false);
           snacksCompletion[snackIndex] = !snacksCompletion[snackIndex];
-          return {
-            ...day,
-            completedMeals: {
-              ...completedMeals,
-              snacks: snacksCompletion,
-            },
-          };
+          return { ...day, completedMeals: { ...completedMeals, snacks: snacksCompletion } };
         } else if (mealType === "breakfast") {
-          return {
-            ...day,
-            completedMeals: {
-              ...completedMeals,
-              breakfast: !completedMeals.breakfast,
-            },
-          };
+          return { ...day, completedMeals: { ...completedMeals, breakfast: !completedMeals.breakfast } };
         } else if (mealType === "lunch") {
-          return {
-            ...day,
-            completedMeals: {
-              ...completedMeals,
-              lunch: !completedMeals.lunch,
-            },
-          };
+          return { ...day, completedMeals: { ...completedMeals, lunch: !completedMeals.lunch } };
         } else if (mealType === "dinner") {
-          return {
-            ...day,
-            completedMeals: {
-              ...completedMeals,
-              dinner: !completedMeals.dinner,
-            },
-          };
+          return { ...day, completedMeals: { ...completedMeals, dinner: !completedMeals.dinner } };
         }
       }
       return day;
     });
 
-    const updatedPlan = {
-      ...currentMealPlan,
-      days: updatedDays,
-    };
-
+    const updatedPlan = { ...currentMealPlan, days: updatedDays };
     await saveMealPlan(updatedPlan);
+  };
+
+  const recalcDayTotals = (day: typeof currentMealPlan extends { days: (infer D)[] } | null ? D : never) => {
+    const d = { ...day };
+    d.totalCalories = (d.breakfast?.calories || 0) + (d.lunch?.calories || 0) + (d.dinner?.calories || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.calories, 0);
+    d.totalProtein = (d.breakfast?.protein || 0) + (d.lunch?.protein || 0) + (d.dinner?.protein || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.protein, 0);
+    d.totalCarbs = (d.breakfast?.carbs || 0) + (d.lunch?.carbs || 0) + (d.dinner?.carbs || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.carbs, 0);
+    d.totalFats = (d.breakfast?.fats || 0) + (d.lunch?.fats || 0) + (d.dinner?.fats || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.fats, 0);
+    return d;
   };
 
   const addMealToDay = async (dayId: string, meal: MealSuggestion, mealType: "breakfast" | "lunch" | "dinner" | "snack") => {
@@ -859,51 +734,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
         const updatedDay = { ...day };
-        
         if (mealType === "snack") {
           updatedDay.snacks = [...day.snacks, meal];
-          const completedMeals = updatedDay.completedMeals || {
-            breakfast: false,
-            lunch: false,
-            dinner: false,
-            snacks: [],
-          };
-          updatedDay.completedMeals = {
-            ...completedMeals,
-            snacks: [...(completedMeals.snacks || []), false],
-          };
+          const completedMeals = updatedDay.completedMeals || { breakfast: false, lunch: false, dinner: false, snacks: [] };
+          updatedDay.completedMeals = { ...completedMeals, snacks: [...(completedMeals.snacks || []), false] };
         } else {
           updatedDay[mealType] = meal;
         }
-
-        updatedDay.totalCalories = (updatedDay.breakfast?.calories || 0) + 
-                                    (updatedDay.lunch?.calories || 0) + 
-                                    (updatedDay.dinner?.calories || 0) + 
-                                    updatedDay.snacks.reduce((sum, s) => sum + s.calories, 0);
-        updatedDay.totalProtein = (updatedDay.breakfast?.protein || 0) + 
-                                   (updatedDay.lunch?.protein || 0) + 
-                                   (updatedDay.dinner?.protein || 0) + 
-                                   updatedDay.snacks.reduce((sum, s) => sum + s.protein, 0);
-        updatedDay.totalCarbs = (updatedDay.breakfast?.carbs || 0) + 
-                                 (updatedDay.lunch?.carbs || 0) + 
-                                 (updatedDay.dinner?.carbs || 0) + 
-                                 updatedDay.snacks.reduce((sum, s) => sum + s.carbs, 0);
-        updatedDay.totalFats = (updatedDay.breakfast?.fats || 0) + 
-                                (updatedDay.lunch?.fats || 0) + 
-                                (updatedDay.dinner?.fats || 0) + 
-                                updatedDay.snacks.reduce((sum, s) => sum + s.fats, 0);
-
-        return updatedDay;
+        return recalcDayTotals(updatedDay);
       }
       return day;
     });
-
-    const updatedPlan = {
-      ...currentMealPlan,
-      days: updatedDays,
-    };
-
-    await saveMealPlan(updatedPlan);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
   };
 
   const removeMealFromDay = async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
@@ -912,59 +754,25 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
         const updatedDay = { ...day };
-        
         if (mealType === "snack" && snackIndex !== undefined) {
           updatedDay.snacks = day.snacks.filter((_, index) => index !== snackIndex);
-          const completedMeals = updatedDay.completedMeals || {
-            breakfast: false,
-            lunch: false,
-            dinner: false,
-            snacks: [],
-          };
-          updatedDay.completedMeals = {
-            ...completedMeals,
-            snacks: (completedMeals.snacks || []).filter((_, index) => index !== snackIndex),
-          };
+          const completedMeals = updatedDay.completedMeals || { breakfast: false, lunch: false, dinner: false, snacks: [] };
+          updatedDay.completedMeals = { ...completedMeals, snacks: (completedMeals.snacks || []).filter((_, index) => index !== snackIndex) };
         } else if (mealType !== "snack") {
           updatedDay[mealType] = undefined;
           if (updatedDay.completedMeals) {
             updatedDay.completedMeals[mealType] = false;
           }
         }
-
-        updatedDay.totalCalories = (updatedDay.breakfast?.calories || 0) + 
-                                    (updatedDay.lunch?.calories || 0) + 
-                                    (updatedDay.dinner?.calories || 0) + 
-                                    updatedDay.snacks.reduce((sum, s) => sum + s.calories, 0);
-        updatedDay.totalProtein = (updatedDay.breakfast?.protein || 0) + 
-                                   (updatedDay.lunch?.protein || 0) + 
-                                   (updatedDay.dinner?.protein || 0) + 
-                                   updatedDay.snacks.reduce((sum, s) => sum + s.protein, 0);
-        updatedDay.totalCarbs = (updatedDay.breakfast?.carbs || 0) + 
-                                 (updatedDay.lunch?.carbs || 0) + 
-                                 (updatedDay.dinner?.carbs || 0) + 
-                                 updatedDay.snacks.reduce((sum, s) => sum + s.carbs, 0);
-        updatedDay.totalFats = (updatedDay.breakfast?.fats || 0) + 
-                                (updatedDay.lunch?.fats || 0) + 
-                                (updatedDay.dinner?.fats || 0) + 
-                                updatedDay.snacks.reduce((sum, s) => sum + s.fats, 0);
-
-        return updatedDay;
+        return recalcDayTotals(updatedDay);
       }
       return day;
     });
-
-    const updatedPlan = {
-      ...currentMealPlan,
-      days: updatedDays,
-    };
-
-    await saveMealPlan(updatedPlan);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
   };
 
   const addGroceryItem = async (name: string, category: GroceryList["items"][0]["category"]) => {
     if (!groceryList) return;
-
     const newItem: GroceryList["items"][0] = {
       id: `item-${Date.now()}`,
       name: name,
@@ -973,12 +781,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       category: category,
       checked: false,
     };
-
-    const updatedList = {
-      ...groceryList,
-      items: [...groceryList.items, newItem],
-    };
-
+    const updatedList = { ...groceryList, items: [...groceryList.items, newItem] };
     await saveGroceryList(updatedList);
   };
 
@@ -989,6 +792,19 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         id: `fav-exercise-${Date.now()}`,
         addedAt: new Date().toISOString(),
       };
+
+      if (user) {
+        try {
+          const remote = await remoteFitnessRepo.addFavoriteExercise(user.id, exercise);
+          if (remote) {
+            newFavorite.id = remote.id;
+            newFavorite.addedAt = remote.addedAt;
+          }
+        } catch (err: any) {
+          if (err?.message !== 'NETWORK_ERROR') console.error('[FitnessProvider] Error syncing fav exercise:', err);
+        }
+      }
+
       const updated = [...favoriteExercises, newFavorite];
       await AsyncStorage.setItem(FAVORITE_EXERCISES_KEY, JSON.stringify(updated));
       setFavoriteExercises(updated);
@@ -999,6 +815,13 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const removeFavoriteExercise = async (id: string) => {
     try {
+      if (user) {
+        try {
+          await remoteFitnessRepo.removeFavoriteExercise(user.id, id);
+        } catch (err: any) {
+          if (err?.message !== 'NETWORK_ERROR') console.error('[FitnessProvider] Error removing fav exercise:', err);
+        }
+      }
       const updated = favoriteExercises.filter(ex => ex.id !== id);
       await AsyncStorage.setItem(FAVORITE_EXERCISES_KEY, JSON.stringify(updated));
       setFavoriteExercises(updated);
@@ -1014,6 +837,19 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         id: `fav-meal-${Date.now()}`,
         addedAt: new Date().toISOString(),
       };
+
+      if (user) {
+        try {
+          const remote = await remoteFitnessRepo.addFavoriteMeal(user.id, meal);
+          if (remote) {
+            newFavorite.id = remote.id;
+            newFavorite.addedAt = remote.addedAt;
+          }
+        } catch (err: any) {
+          if (err?.message !== 'NETWORK_ERROR') console.error('[FitnessProvider] Error syncing fav meal:', err);
+        }
+      }
+
       const updated = [...favoriteMeals, newFavorite];
       await AsyncStorage.setItem(FAVORITE_MEALS_KEY, JSON.stringify(updated));
       setFavoriteMeals(updated);
@@ -1024,6 +860,13 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const removeFavoriteMeal = async (id: string) => {
     try {
+      if (user) {
+        try {
+          await remoteFitnessRepo.removeFavoriteMeal(user.id, id);
+        } catch (err: any) {
+          if (err?.message !== 'NETWORK_ERROR') console.error('[FitnessProvider] Error removing fav meal:', err);
+        }
+      }
       const updated = favoriteMeals.filter(meal => meal.id !== id);
       await AsyncStorage.setItem(FAVORITE_MEALS_KEY, JSON.stringify(updated));
       setFavoriteMeals(updated);
@@ -1038,43 +881,16 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
         const updatedDay = { ...day };
-        
         if (mealType === "snack" && snackIndex !== undefined) {
-          updatedDay.snacks = day.snacks.map((snack, index) => 
-            index === snackIndex ? updatedMeal : snack
-          );
+          updatedDay.snacks = day.snacks.map((snack, index) => index === snackIndex ? updatedMeal : snack);
         } else if (mealType !== "snack") {
           updatedDay[mealType] = updatedMeal;
         }
-
-        updatedDay.totalCalories = (updatedDay.breakfast?.calories || 0) + 
-                                    (updatedDay.lunch?.calories || 0) + 
-                                    (updatedDay.dinner?.calories || 0) + 
-                                    updatedDay.snacks.reduce((sum, s) => sum + s.calories, 0);
-        updatedDay.totalProtein = (updatedDay.breakfast?.protein || 0) + 
-                                   (updatedDay.lunch?.protein || 0) + 
-                                   (updatedDay.dinner?.protein || 0) + 
-                                   updatedDay.snacks.reduce((sum, s) => sum + s.protein, 0);
-        updatedDay.totalCarbs = (updatedDay.breakfast?.carbs || 0) + 
-                                 (updatedDay.lunch?.carbs || 0) + 
-                                 (updatedDay.dinner?.carbs || 0) + 
-                                 updatedDay.snacks.reduce((sum, s) => sum + s.carbs, 0);
-        updatedDay.totalFats = (updatedDay.breakfast?.fats || 0) + 
-                                (updatedDay.lunch?.fats || 0) + 
-                                (updatedDay.dinner?.fats || 0) + 
-                                updatedDay.snacks.reduce((sum, s) => sum + s.fats, 0);
-
-        return updatedDay;
+        return recalcDayTotals(updatedDay);
       }
       return day;
     });
-
-    const updatedPlan = {
-      ...currentMealPlan,
-      days: updatedDays,
-    };
-
-    await saveMealPlan(updatedPlan);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
   };
 
   return {
