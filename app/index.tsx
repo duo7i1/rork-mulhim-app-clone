@@ -20,26 +20,26 @@ export default function Index() {
   }
 
   if (!hasSelectedLanguage) {
-    return <Redirect href="/welcome" />;
+    return <Redirect href={"/welcome" as any} />;
   }
 
   if (user && hasProfile) {
     console.log('[Index] User logged in with profile in Supabase, redirecting to plan');
-    return <Redirect href="/(tabs)/plan" />;
+    return <Redirect href={"/(tabs)/plan" as any} />;
   }
 
   if (user && !hasProfile) {
     console.log('[Index] User logged in without profile, redirecting to onboarding');
-    return <Redirect href="/onboarding" />;
+    return <Redirect href={"/onboarding" as any} />;
   }
 
   if (!user && hasProfile) {
     console.log('[Index] Guest with local profile, redirecting to plan');
-    return <Redirect href="/(tabs)/plan" />;
+    return <Redirect href={"/(tabs)/plan" as any} />;
   }
 
   console.log('[Index] No user, no profile, showing account prompt');
-  return <Redirect href="/account-prompt" />;
+  return <Redirect href={"/account-prompt" as any} />;
 }
 
 const styles = StyleSheet.create({

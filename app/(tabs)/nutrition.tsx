@@ -854,7 +854,7 @@ export default function NutritionScreen() {
                           return;
                         }
                         router.push({
-                          pathname: "/meal-details",
+                          pathname: "/meal-details" as any,
                           params: { 
                             meal: mealData,
                             dayId: day.id,
@@ -908,7 +908,7 @@ export default function NutritionScreen() {
                           return;
                         }
                         router.push({
-                          pathname: "/meal-details",
+                          pathname: "/meal-details" as any,
                           params: { 
                             meal: mealData,
                             dayId: day.id,
@@ -962,7 +962,7 @@ export default function NutritionScreen() {
                           return;
                         }
                         router.push({
-                          pathname: "/meal-details",
+                          pathname: "/meal-details" as any,
                           params: { 
                             meal: mealData,
                             dayId: day.id,
@@ -1022,7 +1022,7 @@ export default function NutritionScreen() {
                               return;
                             }
                             router.push({
-                              pathname: "/meal-details",
+                              pathname: "/meal-details" as any,
                               params: { 
                                 meal: mealData,
                                 dayId: day.id,

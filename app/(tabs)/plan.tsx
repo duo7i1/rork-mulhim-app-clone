@@ -603,9 +603,9 @@ export default function PlanScreen() {
                   style={styles.startButton}
                   onPress={() => {
                     if (!isAuthenticated) {
-                      router.push("/auth/login");
+                      router.push("/auth/login" as any);
                     } else {
-                      router.push(`/workout-details?sessionId=${session.id}`);
+                      router.push(`/workout-details?sessionId=${session.id}` as any);
                     }
                   }}
                 >
