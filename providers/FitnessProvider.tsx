@@ -407,12 +407,22 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           : [...completedExercises, exerciseId];
 
         const allExercisesCompleted = newCompletedExercises.length === session.exercises.length;
+        const newCompletedAt = allExercisesCompleted ? new Date().toISOString() : session.completedAt;
+
+        if (user) {
+          remoteFitnessRepo.updateSessionCompletion(
+            sessionId,
+            allExercisesCompleted,
+            newCompletedAt,
+            newCompletedExercises
+          );
+        }
 
         return {
           ...session,
           completedExercises: newCompletedExercises,
           completed: allExercisesCompleted,
-          completedAt: allExercisesCompleted ? new Date().toISOString() : session.completedAt,
+          completedAt: newCompletedAt,
         };
       }
       return session;
@@ -429,11 +439,23 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedSessions = currentWeekPlan.sessions.map((session) => {
       if (session.id === sessionId) {
         const newCompleted = !session.completed;
+        const newCompletedAt = newCompleted ? new Date().toISOString() : undefined;
+        const newCompletedExercises = newCompleted ? session.exercises.map((e) => e.id) : [];
+
+        if (user) {
+          remoteFitnessRepo.updateSessionCompletion(
+            sessionId,
+            newCompleted,
+            newCompletedAt,
+            newCompletedExercises
+          );
+        }
+
         return {
           ...session,
           completed: newCompleted,
-          completedAt: newCompleted ? new Date().toISOString() : undefined,
-          completedExercises: newCompleted ? session.exercises.map((e) => e.id) : [],
+          completedAt: newCompletedAt,
+          completedExercises: newCompletedExercises,
         };
       }
       return session;

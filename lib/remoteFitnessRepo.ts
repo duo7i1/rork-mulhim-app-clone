@@ -296,6 +296,9 @@ export const remoteFitnessRepo = {
             session_name: session.name,
             estimated_duration: session.duration,
             rest_note: session.restNote || null,
+            is_completed: session.completed || false,
+            completed_at: session.completedAt || null,
+            completed_exercises: session.completedExercises || [],
           };
         });
 
@@ -358,6 +361,32 @@ export const remoteFitnessRepo = {
     }
   },
 
+  async updateSessionCompletion(sessionId: string, completed: boolean, completedAt: string | undefined, completedExercises: string[]) {
+    console.log('[RemoteRepo] Updating session completion:', sessionId, 'completed:', completed, 'exercises:', completedExercises.length);
+    try {
+      const { error } = await supabase
+        .from('workout_sessions')
+        .update({
+          is_completed: completed,
+          completed_at: completedAt || null,
+          completed_exercises: completedExercises,
+        })
+        .eq('id', sessionId);
+
+      if (error) {
+        console.error('[RemoteRepo] Error updating session completion:', error);
+        return;
+      }
+      console.log('[RemoteRepo] Session completion updated successfully');
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error updating session completion');
+      } else {
+        console.error('[RemoteRepo] Error updating session completion:', e);
+      }
+    }
+  },
+
   async fetchActiveWorkoutPlan(userId: string): Promise<WeeklyPlan | null> {
     console.log('[RemoteRepo] Fetching active workout plan for user:', userId);
     try {
@@ -407,6 +436,8 @@ export const remoteFitnessRepo = {
               assignedWeight: ex.assigned_weight || undefined,
             }));
 
+          const completedExercises: string[] = Array.isArray(s.completed_exercises) ? s.completed_exercises : [];
+
           return {
             id: s.id,
             day: s.day_name,
@@ -414,6 +445,9 @@ export const remoteFitnessRepo = {
             exercises,
             duration: s.estimated_duration || 60,
             restNote: s.rest_note || undefined,
+            completed: s.is_completed || false,
+            completedAt: s.completed_at || undefined,
+            completedExercises: completedExercises,
           } as WorkoutSession;
         }),
       };

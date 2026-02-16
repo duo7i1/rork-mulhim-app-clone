@@ -98,6 +98,11 @@ CREATE POLICY "Users can delete own workout logs"
   ON workout_logs FOR DELETE
   USING (auth.uid() = user_id);
 
+-- Add completion tracking columns to workout_sessions
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS completed_exercises JSONB DEFAULT '[]';
+
 -- Create function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
