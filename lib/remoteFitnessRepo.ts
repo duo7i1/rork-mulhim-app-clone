@@ -297,7 +297,6 @@ export const remoteFitnessRepo = {
             estimated_duration: session.duration,
             rest_note: session.restNote || null,
             is_completed: session.completed || false,
-            completed_exercises: JSON.stringify(session.completedExercises || []),
           };
         });
 
@@ -378,7 +377,6 @@ export const remoteFitnessRepo = {
         .from('workout_sessions')
         .update({
           is_completed: completed,
-          completed_exercises: JSON.stringify(completedExercises),
         })
         .eq('id', sessionId);
 
@@ -450,7 +448,7 @@ export const remoteFitnessRepo = {
               assignedWeight: ex.assigned_weight || undefined,
             }));
 
-          const completedExercises: string[] = Array.isArray(s.completed_exercises) ? s.completed_exercises : [];
+          const completedExercises: string[] = [];
 
           return {
             id: s.id,
