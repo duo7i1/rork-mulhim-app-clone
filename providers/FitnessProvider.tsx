@@ -421,6 +421,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
+
+    if (user) {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, updatedPlan).then(() => {
+        console.log('[FitnessProvider] Exercise completion synced to Supabase');
+      }).catch((err) => {
+        console.warn('[FitnessProvider] Error syncing exercise completion:', err);
+      });
+    }
   };
 
   const toggleSessionCompletion = (sessionId: string) => {
@@ -442,6 +450,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
+
+    if (user) {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, updatedPlan).then(() => {
+        console.log('[FitnessProvider] Session completion synced to Supabase');
+      }).catch((err) => {
+        console.warn('[FitnessProvider] Error syncing session completion:', err);
+      });
+    }
   };
 
   const updateExercise = (sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
@@ -463,6 +479,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
+
+    if (user) {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, updatedPlan).then(() => {
+        console.log('[FitnessProvider] Exercise update synced to Supabase');
+      }).catch((err) => {
+        console.warn('[FitnessProvider] Error syncing exercise update:', err);
+      });
+    }
   };
 
   const getCurrentWeight = (): number => {
