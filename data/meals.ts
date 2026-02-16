@@ -9,8 +9,8 @@ export const saudiMeals: {
   breakfast: [
     {
       id: "b1",
-      name: "Fool with Eggs",
-      nameAr: "فول بالبيض",
+      name: "Fool",
+      nameAr: "فول",
       type: "breakfast",
       calories: 350,
       protein: 18,
