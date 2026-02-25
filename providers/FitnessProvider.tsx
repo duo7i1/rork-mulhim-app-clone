@@ -208,7 +208,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         let remoteWorkoutPlan: WeeklyPlan | null = null;
         try {
           remoteWorkoutPlan = await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id);
-          if (remoteWorkoutPlan && remoteWorkoutPlan.sessions.length > 0) {
+          if (remoteWorkoutPlan && remoteWorkoutPlan.sessions && remoteWorkoutPlan.sessions.length > 0) {
             setCurrentWeekPlan(remoteWorkoutPlan);
             await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
             console.log('[FitnessProvider] Remote: Workout plan refreshed with', remoteWorkoutPlan.sessions.length, 'sessions');
@@ -249,7 +249,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         if (!remoteWorkoutPlan && weekPlanData) {
           console.log('[FitnessProvider] No remote workout plan but local cache exists, pushing to Supabase');
           const localWeekPlan = safeJsonParse<WeeklyPlan | null>(weekPlanData, null);
-          if (localWeekPlan && localWeekPlan.sessions?.length > 0) {
+          if (localWeekPlan && localWeekPlan.sessions && localWeekPlan.sessions.length > 0) {
             remoteFitnessRepo.saveWorkoutPlan(user.id, localWeekPlan).then(() => {
               console.log('[FitnessProvider] Local workout plan pushed to Supabase');
             }).catch((err) => {
@@ -397,7 +397,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const toggleExerciseCompletion = (sessionId: string, exerciseId: string) => {
     if (!currentWeekPlan) return;
 
-    const updatedSessions = currentWeekPlan.sessions.map((session) => {
+    const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
       if (session.id === sessionId) {
         const completedExercises = session.completedExercises || [];
         const isCompleted = completedExercises.includes(exerciseId);
@@ -436,7 +436,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const toggleSessionCompletion = (sessionId: string) => {
     if (!currentWeekPlan) return;
 
-    const updatedSessions = currentWeekPlan.sessions.map((session) => {
+    const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
       if (session.id === sessionId) {
         const newCompleted = !session.completed;
         const newCompletedAt = newCompleted ? new Date().toISOString() : undefined;
@@ -469,7 +469,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const updateExercise = (sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
     if (!currentWeekPlan) return;
 
-    const updatedSessions = currentWeekPlan.sessions.map((session) => {
+    const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
       if (session.id === sessionId) {
         const updatedExercises = session.exercises.map((exercise) => {
           if (exercise.id === exerciseId) {
