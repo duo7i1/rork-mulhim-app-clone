@@ -373,13 +373,17 @@ export const remoteFitnessRepo = {
         return;
       }
 
-      const { error } = await supabase
-        .from('workout_sessions')
-        .update({
+      const updateData: Record<string, any> = {
           is_completed: completed,
           completed_exercises: completedExercises,
-          completed_at: completedAt || null,
-        })
+        };
+      if (completedAt) {
+        updateData.updated_at = completedAt;
+      }
+
+      const { error } = await supabase
+        .from('workout_sessions')
+        .update(updateData)
         .eq('id', sessionId);
 
       if (error) {
