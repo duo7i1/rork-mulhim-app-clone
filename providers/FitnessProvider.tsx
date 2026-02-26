@@ -166,12 +166,21 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
       console.log('[FitnessProvider] Step 2: Refreshing from Supabase for user:', user.id);
       try {
+        const safeFetch = async <T,>(fn: () => Promise<T>, label: string, fallback: T): Promise<T> => {
+          try {
+            return await fn();
+          } catch (e: any) {
+            console.warn(`[FitnessProvider] ${label} failed, using fallback:`, e?.message);
+            return fallback;
+          }
+        };
+
         const [remoteProfile, remoteProgress, remoteLogs, remoteFavExercises, remoteFavMeals] = await Promise.all([
-          remoteFitnessRepo.fetchProfile(user.id),
-          remoteFitnessRepo.fetchProgressEntries(user.id),
-          remoteFitnessRepo.fetchWorkoutLogs(user.id),
-          remoteFitnessRepo.fetchFavoriteExercises(user.id),
-          remoteFitnessRepo.fetchFavoriteMeals(user.id),
+          safeFetch(() => remoteFitnessRepo.fetchProfile(user.id), 'fetchProfile', null),
+          safeFetch(() => remoteFitnessRepo.fetchProgressEntries(user.id), 'fetchProgressEntries', []),
+          safeFetch(() => remoteFitnessRepo.fetchWorkoutLogs(user.id), 'fetchWorkoutLogs', []),
+          safeFetch(() => remoteFitnessRepo.fetchFavoriteExercises(user.id), 'fetchFavoriteExercises', []),
+          safeFetch(() => remoteFitnessRepo.fetchFavoriteMeals(user.id), 'fetchFavoriteMeals', []),
         ]);
 
         setRemoteProfileChecked(true);
