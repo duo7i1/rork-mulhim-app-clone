@@ -537,14 +537,16 @@ export const remoteFitnessRepo = {
   async fetchActiveNutritionPlan(userId: string): Promise<{ plan: NutritionPlan; mealPlan: WeeklyMealPlan } | null> {
     console.log('[RemoteRepo] Fetching active nutrition plan for user:', userId);
     try {
-      const { data: npData, error: npError } = await supabase
-        .from('nutrition_plans')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: npData, error: npError } = await retryFetch(() =>
+        supabase
+          .from('nutrition_plans')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      );
 
       if (npError) handleSupabaseError(npError, 'Error fetching nutrition plan');
       if (!npData) {
@@ -570,14 +572,16 @@ export const remoteFitnessRepo = {
         },
       };
 
-      const { data: mealPlanDays, error: mpError } = await supabase
-        .from('meal_plans')
-        .select(`
-          *,
-          meals (*)
-        `)
-        .eq('nutrition_plan_id', npData.id)
-        .order('day_number', { ascending: true });
+      const { data: mealPlanDays, error: mpError } = await retryFetch(() =>
+        supabase
+          .from('meal_plans')
+          .select(`
+            *,
+            meals (*)
+          `)
+          .eq('nutrition_plan_id', npData.id)
+          .order('day_number', { ascending: true })
+      );
 
       if (mpError) handleSupabaseError(mpError, 'Error fetching meal plans');
 
@@ -627,7 +631,12 @@ export const remoteFitnessRepo = {
 
       console.log('[RemoteRepo] Nutrition plan fetched with', days.length, 'days');
       return { plan: nutritionPlan, mealPlan };
-    } catch (e) {
+    } catch (e: any) {
+      const isNetworkError = e?.message?.includes('Failed to fetch') || e?.message === 'NETWORK_ERROR' || e?.name === 'TypeError';
+      if (isNetworkError) {
+        console.warn('[RemoteRepo] Network error fetching nutrition plan, returning null');
+        return null;
+      }
       return wrapNetworkError(e);
     }
   },
