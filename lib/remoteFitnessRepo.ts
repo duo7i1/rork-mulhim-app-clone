@@ -296,6 +296,7 @@ export const remoteFitnessRepo = {
             session_name: session.name,
             estimated_duration: session.duration,
             rest_note: session.restNote || null,
+            is_completed: session.completed || false,
           };
         });
 
@@ -359,7 +360,43 @@ export const remoteFitnessRepo = {
   },
 
   async updateSessionCompletion(sessionId: string, completed: boolean, completedAt: string | undefined, completedExercises: string[]) {
-    console.log('[RemoteRepo] Session completion tracked locally only. sessionId:', sessionId, 'completed:', completed, 'exercises:', completedExercises.length);
+    console.log('[RemoteRepo] Updating session completion:', sessionId, 'completed:', completed, 'exercises:', completedExercises.length);
+    try {
+      const { data: existing } = await supabase
+        .from('workout_sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (!existing) {
+        console.warn('[RemoteRepo] Session not found in Supabase, skipping update for id:', sessionId);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('workout_sessions')
+        .update({
+          is_completed: completed,
+        })
+        .eq('id', sessionId);
+
+      if (error) {
+        console.error('[RemoteRepo] Error updating session completion:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }));
+        return;
+      }
+      console.log('[RemoteRepo] Session completion updated successfully');
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error updating session completion');
+      } else {
+        console.error('[RemoteRepo] Error updating session completion:', JSON.stringify(e?.message || e));
+      }
+    }
   },
 
   async fetchActiveWorkoutPlan(userId: string): Promise<WeeklyPlan | null> {
@@ -420,7 +457,7 @@ export const remoteFitnessRepo = {
             exercises,
             duration: s.estimated_duration || 60,
             restNote: s.rest_note || undefined,
-            completed: false,
+            completed: s.is_completed || false,
             completedAt: undefined,
             completedExercises: completedExercises,
           } as WorkoutSession;
@@ -537,16 +574,14 @@ export const remoteFitnessRepo = {
   async fetchActiveNutritionPlan(userId: string): Promise<{ plan: NutritionPlan; mealPlan: WeeklyMealPlan } | null> {
     console.log('[RemoteRepo] Fetching active nutrition plan for user:', userId);
     try {
-      const { data: npData, error: npError } = await retryFetch(() =>
-        supabase
-          .from('nutrition_plans')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      );
+      const { data: npData, error: npError } = await supabase
+        .from('nutrition_plans')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (npError) handleSupabaseError(npError, 'Error fetching nutrition plan');
       if (!npData) {
@@ -572,16 +607,14 @@ export const remoteFitnessRepo = {
         },
       };
 
-      const { data: mealPlanDays, error: mpError } = await retryFetch(() =>
-        supabase
-          .from('meal_plans')
-          .select(`
-            *,
-            meals (*)
-          `)
-          .eq('nutrition_plan_id', npData.id)
-          .order('day_number', { ascending: true })
-      );
+      const { data: mealPlanDays, error: mpError } = await supabase
+        .from('meal_plans')
+        .select(`
+          *,
+          meals (*)
+        `)
+        .eq('nutrition_plan_id', npData.id)
+        .order('day_number', { ascending: true });
 
       if (mpError) handleSupabaseError(mpError, 'Error fetching meal plans');
 
@@ -631,12 +664,7 @@ export const remoteFitnessRepo = {
 
       console.log('[RemoteRepo] Nutrition plan fetched with', days.length, 'days');
       return { plan: nutritionPlan, mealPlan };
-    } catch (e: any) {
-      const isNetworkError = e?.message?.includes('Failed to fetch') || e?.message === 'NETWORK_ERROR' || e?.name === 'TypeError';
-      if (isNetworkError) {
-        console.warn('[RemoteRepo] Network error fetching nutrition plan, returning null');
-        return null;
-      }
+    } catch (e) {
       return wrapNetworkError(e);
     }
   },
