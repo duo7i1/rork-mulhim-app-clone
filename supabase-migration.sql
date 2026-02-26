@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS workout_sessions (
   estimated_duration INTEGER DEFAULT 60,
   rest_note TEXT,
   is_completed BOOLEAN DEFAULT FALSE,
+  completed_exercises JSONB DEFAULT '[]',
+  completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
