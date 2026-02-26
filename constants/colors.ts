@@ -4,7 +4,7 @@ export default {
   accent: "#F7931E",
   success: "#2ECC71",
   warning: "#F39C12",
-  danger: "#E74C3C",
+  danger: "#2ECC71",
   
   background: "#FFFFFF",
   surface: "#F8F9FA",
