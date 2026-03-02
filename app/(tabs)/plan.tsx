@@ -322,7 +322,7 @@ export default function PlanScreen() {
 
   useEffect(() => {
     if (currentWeekPlan && !hasInitializedExpanded.current) {
-      const allSessionIds = new Set(currentWeekPlan.sessions.map(s => s.id));
+      const allSessionIds = new Set((currentWeekPlan.sessions ?? []).map(s => s.id));
       setExpandedSessions(allSessionIds);
       hasInitializedExpanded.current = true;
     }
@@ -351,8 +351,9 @@ export default function PlanScreen() {
     );
   }
 
-  const completedSessions = currentWeekPlan.sessions.filter((s) => s.completed).length;
-  const totalSessions = currentWeekPlan.sessions.length;
+  const sessions = currentWeekPlan.sessions ?? [];
+  const completedSessions = sessions.filter((s) => s.completed).length;
+  const totalSessions = sessions.length;
   const progressPercentage = (completedSessions / totalSessions) * 100;
 
   return (
@@ -415,7 +416,7 @@ export default function PlanScreen() {
                       <TouchableOpacity
                         style={styles.addToSessionButton}
                         onPress={() => {
-                          if (currentWeekPlan && currentWeekPlan.sessions.length > 0) {
+                          if (currentWeekPlan && (currentWeekPlan.sessions ?? []).length > 0) {
                             setSelectedFavoriteSession(exercise.id);
                           }
                         }}
@@ -437,7 +438,7 @@ export default function PlanScreen() {
         )}
 
         <View style={styles.sessionsContainer}>
-          {currentWeekPlan.sessions.map((session) => {
+          {(currentWeekPlan.sessions ?? []).map((session) => {
             const isExpanded = expandedSessions.has(session.id);
             return (
             <View key={session.id} style={styles.sessionCard}>
@@ -522,7 +523,7 @@ export default function PlanScreen() {
                                 <TouchableOpacity 
                                   onPress={() => {
                                     if (currentWeekPlan) {
-                                      const updatedSessions = currentWeekPlan.sessions.map((s) => {
+                                      const updatedSessions = (currentWeekPlan.sessions ?? []).map((s) => {
                                         if (s.id === session.id) {
                                           return {
                                             ...s,
@@ -647,7 +648,7 @@ export default function PlanScreen() {
             </View>
             
             <View style={styles.calendarGrid}>
-              {currentWeekPlan.sessions.map((session) => {
+              {(currentWeekPlan.sessions ?? []).map((session) => {
                 const completedCount = session.completedExercises?.length || 0;
                 const totalCount = session.exercises.length;
                 const progress = (completedCount / totalCount) * 100;
@@ -851,7 +852,7 @@ export default function PlanScreen() {
             </View>
             
             <View style={styles.sessionSelectList}>
-              {currentWeekPlan?.sessions.map((session) => (
+              {(currentWeekPlan?.sessions ?? []).map((session) => (
                 <TouchableOpacity
                   key={session.id}
                   style={styles.sessionSelectButton}
@@ -863,7 +864,7 @@ export default function PlanScreen() {
                         id: `fav-${Date.now()}-${Math.random()}`,
                       };
                       
-                      const updatedSessions = currentWeekPlan.sessions.map((s) => {
+                      const updatedSessions = (currentWeekPlan.sessions ?? []).map((s) => {
                         if (s.id === session.id) {
                           return {
                             ...s,
@@ -960,7 +961,7 @@ export default function PlanScreen() {
               <View style={styles.addExerciseSection}>
                 <Text style={styles.addExerciseSectionTitle}>{t.plan.fromDatabase}</Text>
                 {Object.entries(exerciseDatabase).map(([muscleGroup, exercises]) => {
-                  const session = currentWeekPlan?.sessions.find(s => s.id === showAddExercise);
+                  const session = (currentWeekPlan?.sessions ?? []).find(s => s.id === showAddExercise);
                   if (!session) return null;
                   
                   let filteredExercises = exercises;
@@ -989,7 +990,7 @@ export default function PlanScreen() {
                                 id: `db-${Date.now()}-${Math.random()}`,
                               };
                               
-                              const updatedSessions = currentWeekPlan.sessions.map((s) => {
+                              const updatedSessions = (currentWeekPlan.sessions ?? []).map((s) => {
                                 if (s.id === showAddExercise) {
                                   const warmupExercises = s.exercises.filter(e => e.muscleGroup === "Warm-up");
                                   const cooldownExercises = s.exercises.filter(e => e.muscleGroup === "Cool-down");
@@ -1054,7 +1055,7 @@ export default function PlanScreen() {
                 style={styles.confirmButton}
                 onPress={() => {
                   if (currentWeekPlan && showRegenerateConfirm) {
-                    const session = currentWeekPlan.sessions.find(s => s.id === showRegenerateConfirm);
+                    const session = (currentWeekPlan.sessions ?? []).find(s => s.id === showRegenerateConfirm);
                     if (session) {
                       const warmupExercises = session.exercises.filter(e => e.muscleGroup === "Warm-up");
                       const cooldownExercises = session.exercises.filter(e => e.muscleGroup === "Cool-down");
@@ -1090,7 +1091,7 @@ export default function PlanScreen() {
                         })));
                       });
 
-                      const updatedSessions = currentWeekPlan.sessions.map((s) => {
+                      const updatedSessions = (currentWeekPlan.sessions ?? []).map((s) => {
                         if (s.id === showRegenerateConfirm) {
                           return {
                             ...s,

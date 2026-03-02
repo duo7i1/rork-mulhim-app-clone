@@ -187,7 +187,7 @@ export default function CoachScreen() {
     }
 
     if (currentWeekPlan && selectedWorkoutDays.length > 0) {
-      const updatedSessions = currentWeekPlan.sessions.map((session) => {
+      const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
         if (selectedWorkoutDays.includes(session.id)) {
           const newExercises = selectedData.exercises.map((ex: any, index: number) => ({
             id: `ai-exercise-${Date.now()}-${index}-${Math.random()}-${session.id}`,
@@ -529,20 +529,20 @@ export default function CoachScreen() {
                         <Text style={styles.modalSectionTitle}>{t.coach.addToPlan}:</Text>
                         <TouchableOpacity
                           onPress={() => {
-                            if (selectedWorkoutDays.length === currentWeekPlan.sessions.length) {
+                            if (selectedWorkoutDays.length === (currentWeekPlan.sessions ?? []).length) {
                               setSelectedWorkoutDays([]);
                             } else {
-                              setSelectedWorkoutDays(currentWeekPlan.sessions.map(s => s.id));
+                              setSelectedWorkoutDays((currentWeekPlan.sessions ?? []).map(s => s.id));
                             }
                           }}
                         >
                           <Text style={styles.selectAllButton}>
-                            {selectedWorkoutDays.length === currentWeekPlan.sessions.length ? t.common.deselectAll : t.common.selectAll}
+                            {selectedWorkoutDays.length === (currentWeekPlan.sessions ?? []).length ? t.common.deselectAll : t.common.selectAll}
                           </Text>
                         </TouchableOpacity>
                       </View>
                       <View style={styles.compactRowWrap}>
-                        {currentWeekPlan.sessions.map((session) => (
+                        {(currentWeekPlan.sessions ?? []).map((session) => (
                           <TouchableOpacity
                             key={session.id}
                             style={[

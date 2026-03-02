@@ -20,7 +20,7 @@ export default function WorkoutDetailsScreen() {
   const { currentWeekPlan, toggleExerciseCompletion } = useFitness();
   const { t } = useTranslation();
 
-  const session = currentWeekPlan?.sessions.find((s) => s.id === sessionId);
+  const session = (currentWeekPlan?.sessions ?? []).find((s) => s.id === sessionId);
 
   if (!session) {
     return (
