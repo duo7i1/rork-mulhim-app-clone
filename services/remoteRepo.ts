@@ -3,7 +3,6 @@ import type {
   FitnessProfile,
   ProgressEntry,
   WorkoutLog,
-  WorkoutSession,
   WorkoutExercise,
   WeeklyPlan,
   FavoriteExercise,
@@ -13,6 +12,7 @@ import type {
   MealSuggestion,
   NutritionPlan,
   DietPattern,
+  WorkoutSession,
 } from '@/types/fitness';
 
 async function retryFetch<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
@@ -580,8 +580,8 @@ export const remoteFitnessRepo = {
   async fetchActiveNutritionPlan(userId: string): Promise<{ plan: NutritionPlan; mealPlan: WeeklyMealPlan } | null> {
     console.log('[RemoteRepo] Fetching active nutrition plan for user:', userId);
     try {
-      const { data: npData, error: npError } = await retryFetch(() =>
-        supabase
+      const { data: npData, error: npError } = await retryFetch(async () =>
+        await supabase
           .from('nutrition_plans')
           .select('*')
           .eq('user_id', userId)
@@ -615,8 +615,8 @@ export const remoteFitnessRepo = {
         },
       };
 
-      const { data: mealPlanDays, error: mpError } = await retryFetch(() =>
-        supabase
+      const { data: mealPlanDays, error: mpError } = await retryFetch(async () =>
+        await supabase
           .from('meal_plans')
           .select(`
             *,

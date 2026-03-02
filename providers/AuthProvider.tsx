@@ -1,6 +1,6 @@
 import createContextHook from "@nkzw/create-context-hook";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/services/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
