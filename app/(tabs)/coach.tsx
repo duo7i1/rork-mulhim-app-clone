@@ -168,7 +168,7 @@ export default function CoachScreen() {
       rest: ex.rest,
       muscleGroup: selectedData.muscleGroup,
       equipment: [],
-      assignedWeight: "حسب قدرتك",
+      assignedWeight: t.coach.yourAbility,
     }));
 
     if (saveWorkoutToFavorites) {
@@ -197,7 +197,7 @@ export default function CoachScreen() {
             rest: ex.rest,
             muscleGroup: selectedData.muscleGroup,
             equipment: [],
-            assignedWeight: "حسب قدرتك",
+            assignedWeight: t.coach.yourAbility,
           }));
           return {
             ...session,
@@ -214,16 +214,20 @@ export default function CoachScreen() {
       savedToPlan = true;
     }
 
+    const getDaysText = (count: number) => {
+      if (count === 1) return t.coach.oneDay;
+      if (count === 7) return t.coach.allDays;
+      return t.coach.nDays.replace('{count}', String(count));
+    };
+
     if (savedToFavorites && savedToPlan) {
-      const daysCount = selectedWorkoutDays.length;
-      const daysText = daysCount === 1 ? "يوم واحد" : daysCount === 7 ? "جميع الأيام" : `${daysCount} أيام`;
-      Alert.alert("تم الحفظ", `تم إضافة ${exercisesWithIds.length} تمارين إلى المفضلة وإلى ${daysText}`);
+      const daysText = getDaysText(selectedWorkoutDays.length);
+      Alert.alert(t.coach.saved, t.coach.exercisesAddedToBoth.replace('{count}', String(exercisesWithIds.length)).replace('{days}', daysText));
     } else if (savedToFavorites) {
-      Alert.alert("تم الحفظ", `تم إضافة ${exercisesWithIds.length} تمارين إلى المفضلة`);
+      Alert.alert(t.coach.saved, t.coach.exercisesAddedToFavorites.replace('{count}', String(exercisesWithIds.length)));
     } else if (savedToPlan) {
-      const daysCount = selectedWorkoutDays.length;
-      const daysText = daysCount === 1 ? "يوم واحد" : daysCount === 7 ? "جميع الأيام" : `${daysCount} أيام`;
-      Alert.alert("تم الحفظ", `تم إضافة ${exercisesWithIds.length} تمارين إلى ${daysText}`);
+      const daysText = getDaysText(selectedWorkoutDays.length);
+      Alert.alert(t.coach.saved, t.coach.exercisesAddedToDays.replace('{count}', String(exercisesWithIds.length)).replace('{days}', daysText));
     }
 
     setShowSaveModal(false);
@@ -273,28 +277,26 @@ export default function CoachScreen() {
       savedToPlan = true;
     }
 
+    const mealTypeNames: Record<string, string> = {
+      breakfast: t.coach.breakfastType,
+      lunch: t.coach.lunchType,
+      dinner: t.coach.dinnerType,
+      snack: t.coach.snackType,
+    };
+    const getMealDaysText = (count: number) => {
+      if (count === 1) return t.coach.oneDay;
+      if (count === 7) return t.coach.allDays;
+      return t.coach.nDays.replace('{count}', String(count));
+    };
+
     if (savedToFavorites && savedToPlan) {
-      const mealTypeNames: Record<string, string> = {
-        breakfast: "فطور",
-        lunch: "غداء",
-        dinner: "عشاء",
-        snack: "سناك"
-      };
-      const daysCount = selectedDays.length;
-      const daysText = daysCount === 1 ? "يوم واحد" : daysCount === 7 ? "جميع الأيام" : `${daysCount} أيام`;
-      Alert.alert("تم الحفظ", `تم إضافة ${selectedData.mealName} إلى المفضلة وكـ ${mealTypeNames[selectedMealType!]} في ${daysText}`);
+      const daysText = getMealDaysText(selectedDays.length);
+      Alert.alert(t.coach.saved, t.coach.mealAddedToBoth.replace('{name}', selectedData.mealName).replace('{type}', mealTypeNames[selectedMealType!]).replace('{days}', daysText));
     } else if (savedToFavorites) {
-      Alert.alert("تم الحفظ", `تم إضافة ${selectedData.mealName} إلى المفضلة`);
+      Alert.alert(t.coach.saved, t.coach.mealAddedToFavorites.replace('{name}', selectedData.mealName));
     } else if (savedToPlan) {
-      const mealTypeNames: Record<string, string> = {
-        breakfast: "فطور",
-        lunch: "غداء",
-        dinner: "عشاء",
-        snack: "سناك"
-      };
-      const daysCount = selectedDays.length;
-      const daysText = daysCount === 1 ? "يوم واحد" : daysCount === 7 ? "جميع الأيام" : `${daysCount} أيام`;
-      Alert.alert("تم الحفظ", `تم إضافة ${selectedData.mealName} كـ ${mealTypeNames[selectedMealType!]} في ${daysText}`);
+      const daysText = getMealDaysText(selectedDays.length);
+      Alert.alert(t.coach.saved, t.coach.mealAddedToDays.replace('{name}', selectedData.mealName).replace('{type}', mealTypeNames[selectedMealType!]).replace('{days}', daysText));
     }
 
     setShowSaveModal(false);
@@ -359,7 +361,7 @@ export default function CoachScreen() {
           <View style={styles.statsRow}>
             <View style={styles.miniStat}>
               <Text style={styles.miniStatValue}>{getCurrentStreak()}</Text>
-              <Text style={styles.miniStatLabel}>يوم</Text>
+              <Text style={styles.miniStatLabel}>{t.coach.dayUnit}</Text>
             </View>
           </View>
         </View>
@@ -583,9 +585,9 @@ export default function CoachScreen() {
                   
                   {currentMealPlan && (
                     <View style={{ marginTop: 16 }}>
-                      <Text style={styles.modalSectionTitle}>إضافة للخطة</Text>
+                      <Text style={styles.modalSectionTitle}>{t.coach.addToPlanLabel}</Text>
                       
-                      <Text style={styles.compactLabel}>النوع:</Text>
+                      <Text style={styles.compactLabel}>{t.coach.typeLabel}</Text>
                       <View style={styles.compactRow}>
                         <TouchableOpacity
                           style={[
@@ -597,7 +599,7 @@ export default function CoachScreen() {
                           <Text style={[
                             styles.compactButtonText,
                             selectedMealType === "breakfast" && styles.compactButtonTextSelected
-                          ]}>فطور</Text>
+                          ]}>{t.coach.breakfastType}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[
@@ -609,7 +611,7 @@ export default function CoachScreen() {
                           <Text style={[
                             styles.compactButtonText,
                             selectedMealType === "lunch" && styles.compactButtonTextSelected
-                          ]}>غداء</Text>
+                          ]}>{t.coach.lunchType}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[
@@ -621,7 +623,7 @@ export default function CoachScreen() {
                           <Text style={[
                             styles.compactButtonText,
                             selectedMealType === "dinner" && styles.compactButtonTextSelected
-                          ]}>عشاء</Text>
+                          ]}>{t.coach.dinnerType}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[
@@ -633,12 +635,12 @@ export default function CoachScreen() {
                           <Text style={[
                             styles.compactButtonText,
                             selectedMealType === "snack" && styles.compactButtonTextSelected
-                          ]}>سناك</Text>
+                          ]}>{t.coach.snackType}</Text>
                         </TouchableOpacity>
                       </View>
 
                       <View style={styles.daysSelectionHeader}>
-                        <Text style={styles.compactLabel}>الأيام:</Text>
+                        <Text style={styles.compactLabel}>{t.coach.daysLabel}</Text>
                         <TouchableOpacity
                           onPress={() => {
                             if (selectedDays.length === currentMealPlan.days.length) {

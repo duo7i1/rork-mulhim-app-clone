@@ -811,6 +811,11 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     await saveMealPlan({ ...currentMealPlan, days: updatedDays });
   };
 
+  const refreshData = async () => {
+    console.log('[FitnessProvider] Manual refresh triggered');
+    await loadData();
+  };
+
   return {
     profile,
     progress,
@@ -848,6 +853,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     getTargetCalories: calcTargetCalories,
     getCurrentWeight,
     getCurrentStreak,
+    refreshData,
     hasProfile: user
       ? (remoteProfileChecked ? (hasRemoteProfile || !!profile) : !!profile)
       : !!profile,

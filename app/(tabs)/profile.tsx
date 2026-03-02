@@ -436,6 +436,7 @@ interface EditProfileModalProps {
 
 function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
   const { saveProfile, updateWeekPlan } = useFitness();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     age: profile?.age || 0,
     weight: profile?.weight || 0,
@@ -467,20 +468,20 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
   return (
     <SafeAreaView style={styles.modalContainer} edges={["top"]}>
       <View style={styles.modalHeader}>
-        <Text style={styles.modalTitle}>تعديل الملف</Text>
+        <Text style={styles.modalTitle}>{t.editProfile.title}</Text>
         <TouchableOpacity onPress={onClose}>
-          <Text style={styles.closeButton}>إلغاء</Text>
+          <Text style={styles.closeButton}>{t.editProfile.cancel}</Text>
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.modalScroll} contentContainerStyle={styles.editScrollContent}>
         <View style={styles.editSection}>
-          <Text style={styles.editSectionTitle}>المعلومات الأساسية</Text>
+          <Text style={styles.editSectionTitle}>{t.editProfile.basicInfo}</Text>
           
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>العمر</Text>
+            <Text style={styles.editLabel}>{t.editProfile.ageLabel}</Text>
             <TextInput
               style={styles.editInput}
-              placeholder="العمر"
+              placeholder={t.editProfile.ageLabel}
               placeholderTextColor={Colors.textLight}
               keyboardType="number-pad"
               value={formData.age.toString()}
@@ -492,7 +493,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
 
           <View style={styles.editRow}>
             <View style={[styles.editInputGroup, { flex: 1 }]}>
-              <Text style={styles.editLabel}>الوزن (kg)</Text>
+              <Text style={styles.editLabel}>{t.editProfile.weightLabel}</Text>
               <TextInput
                 style={styles.editInput}
                 placeholder="70"
@@ -505,7 +506,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
               />
             </View>
             <View style={[styles.editInputGroup, { flex: 1 }]}>
-              <Text style={styles.editLabel}>الطول (cm)</Text>
+              <Text style={styles.editLabel}>{t.editProfile.heightLabel}</Text>
               <TextInput
                 style={styles.editInput}
                 placeholder="175"
@@ -520,7 +521,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </View>
 
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>الجنس</Text>
+            <Text style={styles.editLabel}>{t.editProfile.genderLabel}</Text>
             <View style={styles.editOptionsRow}>
               <TouchableOpacity
                 style={[
@@ -535,7 +536,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                     formData.gender === "male" && styles.editOptionTextActive,
                   ]}
                 >
-                  ذكر
+                  {t.editProfile.maleLabel}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -551,7 +552,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                     formData.gender === "female" && styles.editOptionTextActive,
                   ]}
                 >
-                  أنثى
+                  {t.editProfile.femaleLabel}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -559,15 +560,15 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
         </View>
 
         <View style={styles.editSection}>
-          <Text style={styles.editSectionTitle}>الأهداف والمستوى</Text>
+          <Text style={styles.editSectionTitle}>{t.editProfile.goalsLevel}</Text>
           
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>الهدف</Text>
+            <Text style={styles.editLabel}>{t.editProfile.goalLabel}</Text>
             <View style={styles.editOptionsColumn}>
               {[
-                { value: "fat_loss", label: "نزول وزن" },
-                { value: "muscle_gain", label: "بناء عضل" },
-                { value: "general_fitness", label: "لياقة عامة وصحة" },
+                { value: "fat_loss", label: t.editProfile.fatLoss },
+                { value: "muscle_gain", label: t.editProfile.muscleGain },
+                { value: "general_fitness", label: t.editProfile.generalFitness },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -591,13 +592,13 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </View>
 
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>النشاط الحالي</Text>
+            <Text style={styles.editLabel}>{t.editProfile.activityLabel}</Text>
             <View style={styles.editOptionsColumn}>
               {[
-                { value: "none", label: "ما اتمرن" },
-                { value: "light", label: "خفيف 1-3 أيام" },
-                { value: "moderate", label: "متوسط 3-5 أيام" },
-                { value: "high", label: "عالي 6-7 أيام" },
+                { value: "none", label: t.editProfile.activityNone },
+                { value: "light", label: t.editProfile.activityLight },
+                { value: "moderate", label: t.editProfile.activityModerate },
+                { value: "high", label: t.editProfile.activityHigh },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -621,12 +622,12 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </View>
 
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>مكان التمرين</Text>
+            <Text style={styles.editLabel}>{t.editProfile.locationLabel}</Text>
             <View style={styles.editOptionsColumn}>
               {[
-                { value: "gym", label: "صالة رياضية" },
-                { value: "home", label: "المنزل" },
-                { value: "minimal_equipment", label: "معدات بسيطة" },
+                { value: "gym", label: t.editProfile.locationGym },
+                { value: "home", label: t.editProfile.locationHome },
+                { value: "minimal_equipment", label: t.editProfile.locationMinimal },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -651,10 +652,10 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
         </View>
 
         <View style={styles.editSection}>
-          <Text style={styles.editSectionTitle}>جدول التمرين</Text>
+          <Text style={styles.editSectionTitle}>{t.editProfile.scheduleTitle}</Text>
           
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>أيام الأسبوع: {formData.availableDays}</Text>
+            <Text style={styles.editLabel}>{t.editProfile.weekDaysLabel} {formData.availableDays}</Text>
             <View style={styles.editOptionsRow}>
               {[2, 3, 4, 5, 6, 7].map((day) => (
                 <TouchableOpacity
@@ -679,7 +680,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </View>
 
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>مدة التمرين: {formData.sessionDuration} دقيقة</Text>
+            <Text style={styles.editLabel}>{t.editProfile.durationLabel} {formData.sessionDuration} {t.editProfile.durationUnit}</Text>
             <View style={styles.editOptionsRow}>
               {[30, 45, 60, 75, 90].map((duration) => (
                 <TouchableOpacity
@@ -704,10 +705,10 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </View>
 
           <View style={styles.editInputGroup}>
-            <Text style={styles.editLabel}>الإصابات أو القيود الصحية</Text>
+            <Text style={styles.editLabel}>{t.editProfile.injuriesLabel}</Text>
             <TextInput
               style={[styles.editInput, styles.editTextArea]}
-              placeholder="مثال: ألم في الركبة، مشاكل في الظهر"
+              placeholder={t.editProfile.injuriesPlaceholder}
               placeholderTextColor={Colors.textLight}
               multiline
               numberOfLines={3}
@@ -725,7 +726,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           disabled={isSaving}
         >
           <Text style={styles.saveButtonText}>
-            {isSaving ? "جاري الحفظ..." : "حفظ التعديلات"}
+            {isSaving ? t.editProfile.saving : t.editProfile.saveChanges}
           </Text>
         </TouchableOpacity>
       </View>

@@ -277,19 +277,19 @@ export default function MealDetailsScreen() {
         <View style={styles.mealCard}>
           {isEditing ? (
             <>
-              <Text style={styles.editLabel}>اسم الوجبة</Text>
+              <Text style={styles.editLabel}>{t.mealDetails.mealNameLabel}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editedMeal.nameAr}
                 onChangeText={(text) => setEditedMeal({ ...editedMeal, nameAr: text })}
-                placeholder="اسم الوجبة بالعربي"
+                placeholder={t.mealDetails.mealNameArPlaceholder}
                 placeholderTextColor={Colors.textLight}
               />
               <TextInput
                 style={[styles.editInput, { marginBottom: 16 }]}
                 value={editedMeal.name}
                 onChangeText={(text) => setEditedMeal({ ...editedMeal, name: text })}
-                placeholder="اسم الوجبة بالإنجليزي"
+                placeholder={t.mealDetails.mealNameEnPlaceholder}
                 placeholderTextColor={Colors.textLight}
               />
             </>
@@ -314,7 +314,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.calories}</Text>
               )}
-              <Text style={styles.macroLabel}>سعرة</Text>
+              <Text style={styles.macroLabel}>{t.mealDetails.calories}</Text>
             </View>
             <View style={styles.macroDivider} />
             <View style={styles.macroItem}>
@@ -330,7 +330,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.protein}g</Text>
               )}
-              <Text style={styles.macroLabel}>🍗 بروتين</Text>
+              <Text style={styles.macroLabel}>🍗 {t.mealDetails.protein}</Text>
             </View>
             <View style={styles.macroDivider} />
             <View style={styles.macroItem}>
@@ -346,7 +346,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.carbs}g</Text>
               )}
-              <Text style={styles.macroLabel}>🍚 كارب</Text>
+              <Text style={styles.macroLabel}>🍚 {t.mealDetails.carbs}</Text>
             </View>
             <View style={styles.macroDivider} />
             <View style={styles.macroItem}>
@@ -362,7 +362,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.fats}g</Text>
               )}
-              <Text style={styles.macroLabel}>🥑 دهون</Text>
+              <Text style={styles.macroLabel}>🥑 {t.mealDetails.fats}</Text>
             </View>
           </View>
         </View>
@@ -382,7 +382,7 @@ export default function MealDetailsScreen() {
                 measurementUnit === "weight" && styles.toggleButtonTextActive,
               ]}
             >
-              الوزن
+              {t.mealDetails.weight}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -399,21 +399,21 @@ export default function MealDetailsScreen() {
                 measurementUnit === "volume" && styles.toggleButtonTextActive,
               ]}
             >
-              الأكواب / المعالق
+              {t.mealDetails.cupsSpoons}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>المكونات</Text>
+            <Text style={styles.sectionTitle}>{t.mealDetails.ingredients}</Text>
             {isEditing && (
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={addIngredient}
               >
                 <Plus size={18} color={Colors.primary} />
-                <Text style={styles.addButtonText}>إضافة مكون</Text>
+                <Text style={styles.addButtonText}>{t.mealDetails.addIngredient}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -430,7 +430,7 @@ export default function MealDetailsScreen() {
                             style={[styles.ingredientInput, { flex: 1 }]}
                             value={ingredient.nameAr}
                             onChangeText={(text) => updateIngredient(index, "nameAr", text)}
-                            placeholder="اسم المكون"
+                            placeholder={t.mealDetails.ingredientNamePlaceholder}
                             placeholderTextColor={Colors.textLight}
                           />
                           <TouchableOpacity
@@ -442,22 +442,22 @@ export default function MealDetailsScreen() {
                         </View>
                         <View style={styles.measurementRow}>
                           <View style={styles.measurementInputContainer}>
-                            <Text style={styles.measurementLabel}>الوزن:</Text>
+                            <Text style={styles.measurementLabel}>{t.mealDetails.weightLabel}</Text>
                             <TextInput
                               style={styles.ingredientInput}
                               value={ingredient.weight}
                               onChangeText={(text) => updateIngredient(index, "weight", text)}
-                              placeholder="مثال: 200 جرام"
+                              placeholder={t.mealDetails.weightExample}
                               placeholderTextColor={Colors.textLight}
                             />
                           </View>
                           <View style={styles.measurementInputContainer}>
-                            <Text style={styles.measurementLabel}>الحجم:</Text>
+                            <Text style={styles.measurementLabel}>{t.mealDetails.volumeLabel}</Text>
                             <TextInput
                               style={styles.ingredientInput}
                               value={ingredient.volume}
                               onChangeText={(text) => updateIngredient(index, "volume", text)}
-                              placeholder="مثال: 1 كوب"
+                              placeholder={t.mealDetails.volumeExample}
                               placeholderTextColor={Colors.textLight}
                             />
                           </View>
@@ -479,9 +479,9 @@ export default function MealDetailsScreen() {
         </View>
 
         <View style={styles.noteCard}>
-          <Text style={styles.noteTitle}>💡 ملاحظة</Text>
+          <Text style={styles.noteTitle}>{t.mealDetails.noteTitle}</Text>
           <Text style={styles.noteText}>
-            الكميات المذكورة تقريبية ويمكن تعديلها حسب احتياجاتك الغذائية وتفضيلاتك الشخصية
+            {t.mealDetails.noteText}
           </Text>
         </View>
       </ScrollView>
