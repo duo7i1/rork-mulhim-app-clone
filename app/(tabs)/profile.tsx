@@ -32,7 +32,7 @@ import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function ProfileScreen() {
   const { t, setLanguage, language } = useLanguage();
-  const { profile, getTargetCalories, calculateBMR, calculateTDEE, progress, workoutLogs, getCurrentStreak, getCurrentWeight, addProgressEntry } = useFitness();
+  const { profile, getTargetCalories, calculateBMR, calculateTDEE, workoutLogs, getCurrentStreak, getCurrentWeight, addProgressEntry } = useFitness();
   const { signOut } = useAuth();
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [showWeightModal, setShowWeightModal] = useState<boolean>(false);
@@ -312,7 +312,6 @@ export default function ProfileScreen() {
       <Modal
         visible={showEditModal}
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => setShowEditModal(false)}
       >
         <EditProfileModal

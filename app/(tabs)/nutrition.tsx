@@ -26,7 +26,6 @@ export default function NutritionScreen() {
   const router = useRouter();
   const { t, language } = useTranslation();
   const { 
-    profile, 
     getTargetCalories, 
     getCurrentWeight,
     nutritionAssessment, 

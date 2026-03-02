@@ -6,7 +6,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 
 export default function Index() {
-  const { hasProfile, isLoading: profileLoading, profile } = useFitness();
+  const { hasProfile, isLoading: profileLoading } = useFitness();
   const { hasSelectedLanguage, isLoading: languageLoading, t } = useLanguage();
   const { user, isLoading: authLoading } = useAuth();
 
