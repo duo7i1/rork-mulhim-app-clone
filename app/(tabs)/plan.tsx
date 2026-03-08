@@ -37,7 +37,7 @@ export default function PlanScreen() {
   const generateWeeklyPlan = useCallback(() => {
     const plan = generatePlan();
     if (plan) {
-      updateWeekPlan(plan);
+      void updateWeekPlan(plan);
     }
   }, [generatePlan, updateWeekPlan]);
 
@@ -81,7 +81,7 @@ export default function PlanScreen() {
   const sessions = currentWeekPlan.sessions ?? [];
   const completedSessions = sessions.filter((s) => s.completed).length;
   const totalSessions = sessions.length;
-  const progressPercentage = (completedSessions / totalSessions) * 100;
+  const progressPercentage = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -210,7 +210,7 @@ export default function PlanScreen() {
                   )}
 
                   <View style={styles.exercisesContainer}>
-                {session.exercises.map((exercise, index) => {
+                {session.exercises.map((exercise) => {
                   const isExerciseCompleted = session.completedExercises?.includes(exercise.id) || false;
                   const isWarmupOrCooldown = exercise.muscleGroup === "Warm-up" || exercise.muscleGroup === "Cool-down";
                   return (
@@ -259,7 +259,7 @@ export default function PlanScreen() {
                                         }
                                         return s;
                                       });
-                                      updateWeekPlan({
+                                      void updateWeekPlan({
                                         ...currentWeekPlan,
                                         sessions: updatedSessions,
                                       });
@@ -378,7 +378,7 @@ export default function PlanScreen() {
               {(currentWeekPlan.sessions ?? []).map((session) => {
                 const completedCount = session.completedExercises?.length || 0;
                 const totalCount = session.exercises.length;
-                const progress = (completedCount / totalCount) * 100;
+                const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
                 
                 return (
                   <View key={session.id} style={styles.calendarDay}>
@@ -601,7 +601,7 @@ export default function PlanScreen() {
                         return s;
                       });
 
-                      updateWeekPlan({
+                      void updateWeekPlan({
                         ...currentWeekPlan,
                         sessions: updatedSessions,
                       });
@@ -650,7 +650,7 @@ export default function PlanScreen() {
                             id: `fav-${Date.now()}-${Math.random()}`,
                           };
                           
-                          const updatedSessions = currentWeekPlan.sessions.map((s) => {
+                          const updatedSessions = (currentWeekPlan.sessions ?? []).map((s) => {
                             if (s.id === showAddExercise) {
                               const mainExercises = s.exercises.filter(e => e.muscleGroup !== "Warm-up" && e.muscleGroup !== "Cool-down");
                               const warmupExercises = s.exercises.filter(e => e.muscleGroup === "Warm-up");
@@ -664,7 +664,7 @@ export default function PlanScreen() {
                             return s;
                           });
 
-                          updateWeekPlan({
+                          void updateWeekPlan({
                             ...currentWeekPlan,
                             sessions: updatedSessions,
                           });
@@ -725,7 +725,7 @@ export default function PlanScreen() {
                                 return s;
                               });
 
-                              updateWeekPlan({
+                              void updateWeekPlan({
                                 ...currentWeekPlan,
                                 sessions: updatedSessions,
                               });
@@ -777,7 +777,7 @@ export default function PlanScreen() {
                 onPress={() => {
                   if (currentWeekPlan && showRegenerateConfirm) {
                     const updatedPlan = regenerateSession(currentWeekPlan, showRegenerateConfirm);
-                    updateWeekPlan(updatedPlan);
+                    void updateWeekPlan(updatedPlan);
                     setShowRegenerateConfirm(null);
                   }
                 }}

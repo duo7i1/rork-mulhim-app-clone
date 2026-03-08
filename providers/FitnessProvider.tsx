@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import createContextHook from "@nkzw/create-context-hook";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FitnessProfile,
   ProgressEntry,
@@ -35,6 +35,22 @@ const FAVORITE_MEALS_KEY = "@mulhim_favorite_meals";
 const WEEK_PLAN_KEY = "@mulhim_week_plan";
 const NUTRITION_PLAN_KEY = "@mulhim_nutrition_plan";
 
+function normalizeWeeklyPlan(plan: WeeklyPlan | null): WeeklyPlan | null {
+  if (!plan) return null;
+
+  const rawSessions = Array.isArray(plan.sessions) ? plan.sessions : [];
+  const normalizedSessions = rawSessions.map((session) => ({
+    ...session,
+    exercises: Array.isArray(session.exercises) ? session.exercises : [],
+    completedExercises: Array.isArray(session.completedExercises) ? session.completedExercises : [],
+  }));
+
+  return {
+    ...plan,
+    sessions: normalizedSessions,
+  };
+}
+
 export const [FitnessProvider, useFitness] = createContextHook(() => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<FitnessProfile | null>(null);
@@ -54,7 +70,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const [loadError, setLoadError] = useState<boolean>(false);
 
   useEffect(() => {
-    loadData();
+    void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -73,7 +89,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setLoadError(false);
@@ -144,10 +160,10 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         console.log('[FitnessProvider] Cache: Favorite meals hydrated:', parsed.length);
       }
       if (weekPlanData) {
-        const parsed = safeJsonParse<WeeklyPlan | null>(weekPlanData, null);
+        const parsed = normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null));
         if (parsed) {
           setCurrentWeekPlan(parsed);
-          console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions?.length, 'sessions');
+          console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions.length, 'sessions');
         }
       }
       if (nutritionPlanData) {
@@ -221,8 +237,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
         let remoteWorkoutPlan: WeeklyPlan | null = null;
         try {
-          remoteWorkoutPlan = await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id);
-          if (remoteWorkoutPlan && remoteWorkoutPlan.sessions && remoteWorkoutPlan.sessions.length > 0) {
+          remoteWorkoutPlan = normalizeWeeklyPlan(await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id));
+          if (remoteWorkoutPlan && remoteWorkoutPlan.sessions.length > 0) {
             setCurrentWeekPlan(remoteWorkoutPlan);
             await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
             console.log('[FitnessProvider] Remote: Workout plan refreshed with', remoteWorkoutPlan.sessions.length, 'sessions');
@@ -262,8 +278,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
         if (!remoteWorkoutPlan && weekPlanData) {
           console.log('[FitnessProvider] No remote workout plan but local cache exists, pushing to Supabase');
-          const localWeekPlan = safeJsonParse<WeeklyPlan | null>(weekPlanData, null);
-          if (localWeekPlan && localWeekPlan.sessions && localWeekPlan.sessions.length > 0) {
+          const localWeekPlan = normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null));
+          if (localWeekPlan && localWeekPlan.sessions.length > 0) {
             remoteFitnessRepo.saveWorkoutPlan(user.id, localWeekPlan).then(() => {
               console.log('[FitnessProvider] Local workout plan pushed to Supabase');
             }).catch((err) => {
@@ -302,9 +318,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.error("[FitnessProvider] Boot sequence error:", error);
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
-  const saveProfile = async (newProfile: FitnessProfile) => {
+  const saveProfile = useCallback(async (newProfile: FitnessProfile) => {
     try {
       if (!newProfile.fitnessLevel) {
         if (newProfile.activityLevel === "none" || newProfile.activityLevel === "light") {
@@ -340,9 +356,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.error("Error saving profile:", error);
       throw error;
     }
-  };
+  }, [user]);
 
-  const addProgressEntry = async (entry: ProgressEntry) => {
+  const addProgressEntry = useCallback(async (entry: ProgressEntry) => {
     try {
       const updated = [...progress, entry];
       setProgress(updated);
@@ -367,9 +383,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.error("Error adding progress entry:", error);
       throw error;
     }
-  };
+  }, [profile?.weight, progress, user]);
 
-  const addWorkoutLog = async (log: WorkoutLog) => {
+  const addWorkoutLog = useCallback(async (log: WorkoutLog) => {
     try {
       const updated = [...workoutLogs, log];
       setWorkoutLogs(updated);
@@ -392,23 +408,28 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       console.error("Error adding workout log:", error);
       throw error;
     }
-  };
+  }, [user, workoutLogs]);
 
-  const updateWeekPlan = async (plan: WeeklyPlan) => {
-    setCurrentWeekPlan(plan);
-    await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(plan));
-    console.log('[FitnessProvider] Week plan saved locally with', plan.sessions?.length, 'sessions');
+  const updateWeekPlan = useCallback(async (plan: WeeklyPlan) => {
+    const normalizedPlan = normalizeWeeklyPlan(plan);
+    if (!normalizedPlan) {
+      return;
+    }
+
+    setCurrentWeekPlan(normalizedPlan);
+    await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(normalizedPlan));
+    console.log('[FitnessProvider] Week plan saved locally with', normalizedPlan.sessions.length, 'sessions');
 
     if (user) {
-      remoteFitnessRepo.saveWorkoutPlan(user.id, plan).then(() => {
+      remoteFitnessRepo.saveWorkoutPlan(user.id, normalizedPlan).then(() => {
         console.log('[FitnessProvider] Workout plan synced to Supabase');
       }).catch((err) => {
         console.warn('[FitnessProvider] Error saving workout plan to Supabase:', err);
       });
     }
-  };
+  }, [user]);
 
-  const toggleExerciseCompletion = (sessionId: string, exerciseId: string) => {
+  const toggleExerciseCompletion = useCallback((sessionId: string, exerciseId: string) => {
     if (!currentWeekPlan) return;
 
     const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
@@ -424,7 +445,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const newCompletedAt = allExercisesCompleted ? new Date().toISOString() : session.completedAt;
 
         if (user) {
-          remoteFitnessRepo.updateSessionCompletion(
+          void remoteFitnessRepo.updateSessionCompletion(
             sessionId,
             allExercisesCompleted,
             newCompletedAt,
@@ -442,12 +463,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    const updatedPlan = normalizeWeeklyPlan({ ...currentWeekPlan, sessions: updatedSessions });
+    if (!updatedPlan) {
+      return;
+    }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-  };
+  }, [currentWeekPlan, user]);
 
-  const toggleSessionCompletion = (sessionId: string) => {
+  const toggleSessionCompletion = useCallback((sessionId: string) => {
     if (!currentWeekPlan) return;
 
     const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
@@ -457,7 +481,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         const newCompletedExercises = newCompleted ? session.exercises.map((e) => e.id) : [];
 
         if (user) {
-          remoteFitnessRepo.updateSessionCompletion(
+          void remoteFitnessRepo.updateSessionCompletion(
             sessionId,
             newCompleted,
             newCompletedAt,
@@ -475,12 +499,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    const updatedPlan = normalizeWeeklyPlan({ ...currentWeekPlan, sessions: updatedSessions });
+    if (!updatedPlan) {
+      return;
+    }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-  };
+  }, [currentWeekPlan, user]);
 
-  const updateExercise = (sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
+  const updateExercise = useCallback((sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
     if (!currentWeekPlan) return;
 
     const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
@@ -496,12 +523,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return session;
     });
 
-    const updatedPlan = { ...currentWeekPlan, sessions: updatedSessions };
+    const updatedPlan = normalizeWeeklyPlan({ ...currentWeekPlan, sessions: updatedSessions });
+    if (!updatedPlan) {
+      return;
+    }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-  };
+  }, [currentWeekPlan]);
 
-  const getCurrentWeight = (): number => {
+  const getCurrentWeight = useCallback((): number => {
     if (progress.length > 0) {
       const sorted = [...progress].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -509,21 +539,21 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return sorted[0].weight;
     }
     return profile?.weight || 0;
-  };
+  }, [profile?.weight, progress]);
 
-  const calcBMR = (): number => {
+  const calcBMR = useCallback((): number => {
     return calculateBMR(profile, getCurrentWeight());
-  };
+  }, [getCurrentWeight, profile]);
 
-  const calcTDEE = (): number => {
+  const calcTDEE = useCallback((): number => {
     return calculateTDEE(profile, getCurrentWeight());
-  };
+  }, [getCurrentWeight, profile]);
 
-  const calcTargetCalories = (): number => {
+  const calcTargetCalories = useCallback((): number => {
     return getTargetCalories(profile, getCurrentWeight());
-  };
+  }, [getCurrentWeight, profile]);
 
-  const getCurrentStreak = (): number => {
+  const getCurrentStreak = useCallback((): number => {
     if (workoutLogs.length === 0) return 0;
     const sortedLogs = [...workoutLogs].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -545,9 +575,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       }
     }
     return streak;
-  };
+  }, [workoutLogs]);
 
-  const saveNutritionAssessment = async (assessment: NutritionAssessment) => {
+  const saveNutritionAssessment = useCallback(async (assessment: NutritionAssessment) => {
     try {
       if (assessment.completed && !assessment.favoriteMeals) {
         const favMeals = extractFavoriteMealsFromHistory(assessment.dietHistory);
@@ -571,11 +601,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error saving nutrition assessment:", error);
     }
-  };
+  }, [calcTargetCalories, profile, user]);
 
-
-
-  const saveMealPlan = async (plan: WeeklyMealPlan) => {
+  const saveMealPlan = useCallback(async (plan: WeeklyMealPlan) => {
     try {
       await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(plan));
       setCurrentMealPlan(plan);
@@ -588,27 +616,27 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error saving meal plan:", error);
     }
-  };
+  }, [nutritionPlan, user]);
 
-  const saveGroceryList = async (list: GroceryList) => {
+  const saveGroceryList = useCallback(async (list: GroceryList) => {
     try {
       await AsyncStorage.setItem(GROCERY_LIST_KEY, JSON.stringify(list));
       setGroceryList(list);
     } catch (error) {
       console.error("Error saving grocery list:", error);
     }
-  };
+  }, []);
 
-  const toggleGroceryItem = async (itemId: string) => {
+  const toggleGroceryItem = useCallback(async (itemId: string) => {
     if (!groceryList) return;
     const updatedItems = groceryList.items.map((item) =>
       item.id === itemId ? { ...item, checked: !item.checked } : item
     );
     const updatedList = { ...groceryList, items: updatedItems };
     await saveGroceryList(updatedList);
-  };
+  }, [groceryList, saveGroceryList]);
 
-  const toggleMealCompletion = async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
+  const toggleMealCompletion = useCallback(async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
     if (!currentMealPlan) return;
 
     const updatedDays = currentMealPlan.days.map((day) => {
@@ -635,18 +663,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
     const updatedPlan = { ...currentMealPlan, days: updatedDays };
     await saveMealPlan(updatedPlan);
-  };
+  }, [currentMealPlan, saveMealPlan]);
 
-  const recalcDayTotals = (day: typeof currentMealPlan extends { days: (infer D)[] } | null ? D : never) => {
+  const recalcDayTotals = useCallback((day: typeof currentMealPlan extends { days: (infer D)[] } | null ? D : never) => {
     const d = { ...day };
     d.totalCalories = (d.breakfast?.calories || 0) + (d.lunch?.calories || 0) + (d.dinner?.calories || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.calories, 0);
     d.totalProtein = (d.breakfast?.protein || 0) + (d.lunch?.protein || 0) + (d.dinner?.protein || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.protein, 0);
     d.totalCarbs = (d.breakfast?.carbs || 0) + (d.lunch?.carbs || 0) + (d.dinner?.carbs || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.carbs, 0);
     d.totalFats = (d.breakfast?.fats || 0) + (d.lunch?.fats || 0) + (d.dinner?.fats || 0) + d.snacks.reduce((sum: number, s: MealSuggestion) => sum + s.fats, 0);
     return d;
-  };
+  }, []);
 
-  const addMealToDay = async (dayId: string, meal: MealSuggestion, mealType: "breakfast" | "lunch" | "dinner" | "snack") => {
+  const addMealToDay = useCallback(async (dayId: string, meal: MealSuggestion, mealType: "breakfast" | "lunch" | "dinner" | "snack") => {
     if (!currentMealPlan) return;
 
     const updatedDays = currentMealPlan.days.map((day) => {
@@ -664,9 +692,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return day;
     });
     await saveMealPlan({ ...currentMealPlan, days: updatedDays });
-  };
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
-  const removeMealFromDay = async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
+  const removeMealFromDay = useCallback(async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
     if (!currentMealPlan) return;
 
     const updatedDays = currentMealPlan.days.map((day) => {
@@ -687,9 +715,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return day;
     });
     await saveMealPlan({ ...currentMealPlan, days: updatedDays });
-  };
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
-  const addGroceryItem = async (name: string, category: GroceryList["items"][0]["category"]) => {
+  const addGroceryItem = useCallback(async (name: string, category: GroceryList["items"][0]["category"]) => {
     if (!groceryList) return;
     const newItem: GroceryList["items"][0] = {
       id: `item-${Date.now()}`,
@@ -701,9 +729,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     };
     const updatedList = { ...groceryList, items: [...groceryList.items, newItem] };
     await saveGroceryList(updatedList);
-  };
+  }, [groceryList, saveGroceryList]);
 
-  const addFavoriteExercise = async (exercise: Omit<FavoriteExercise, "id" | "addedAt">) => {
+  const addFavoriteExercise = useCallback(async (exercise: Omit<FavoriteExercise, "id" | "addedAt">) => {
     try {
       const newFavorite: FavoriteExercise = {
         ...exercise,
@@ -729,9 +757,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error adding favorite exercise:", error);
     }
-  };
+  }, [favoriteExercises, user]);
 
-  const removeFavoriteExercise = async (id: string) => {
+  const removeFavoriteExercise = useCallback(async (id: string) => {
     try {
       if (user) {
         try {
@@ -746,9 +774,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error removing favorite exercise:", error);
     }
-  };
+  }, [favoriteExercises, user]);
 
-  const addFavoriteMeal = async (meal: Omit<FavoriteMeal, "id" | "addedAt">) => {
+  const addFavoriteMeal = useCallback(async (meal: Omit<FavoriteMeal, "id" | "addedAt">) => {
     try {
       const newFavorite: FavoriteMeal = {
         ...meal,
@@ -774,9 +802,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error adding favorite meal:", error);
     }
-  };
+  }, [favoriteMeals, user]);
 
-  const removeFavoriteMeal = async (id: string) => {
+  const removeFavoriteMeal = useCallback(async (id: string) => {
     try {
       if (user) {
         try {
@@ -791,9 +819,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("Error removing favorite meal:", error);
     }
-  };
+  }, [favoriteMeals, user]);
 
-  const updateMealInPlan = async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", updatedMeal: MealSuggestion, snackIndex?: number) => {
+  const updateMealInPlan = useCallback(async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", updatedMeal: MealSuggestion, snackIndex?: number) => {
     if (!currentMealPlan) return;
 
     const updatedDays = currentMealPlan.days.map((day) => {
@@ -809,14 +837,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       return day;
     });
     await saveMealPlan({ ...currentMealPlan, days: updatedDays });
-  };
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     console.log('[FitnessProvider] Manual refresh triggered');
     await loadData();
-  };
+  }, [loadData]);
 
-  return {
+  return useMemo(() => ({
     profile,
     progress,
     workoutLogs,
@@ -858,5 +886,47 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       ? (remoteProfileChecked ? (hasRemoteProfile || !!profile) : !!profile)
       : !!profile,
     loadError,
-  };
+  }), [
+    profile,
+    progress,
+    workoutLogs,
+    currentWeekPlan,
+    nutritionAssessment,
+    nutritionPlan,
+    currentMealPlan,
+    groceryList,
+    favoriteExercises,
+    favoriteMeals,
+    isLoading,
+    saveProfile,
+    addProgressEntry,
+    addWorkoutLog,
+    updateWeekPlan,
+    toggleExerciseCompletion,
+    toggleSessionCompletion,
+    updateExercise,
+    saveNutritionAssessment,
+    saveMealPlan,
+    saveGroceryList,
+    toggleGroceryItem,
+    toggleMealCompletion,
+    addMealToDay,
+    removeMealFromDay,
+    addGroceryItem,
+    addFavoriteExercise,
+    removeFavoriteExercise,
+    addFavoriteMeal,
+    removeFavoriteMeal,
+    updateMealInPlan,
+    calcBMR,
+    calcTDEE,
+    calcTargetCalories,
+    getCurrentWeight,
+    getCurrentStreak,
+    refreshData,
+    user,
+    remoteProfileChecked,
+    hasRemoteProfile,
+    loadError,
+  ]);
 });
