@@ -373,29 +373,55 @@ export const remoteFitnessRepo = {
         return;
       }
 
-      const updateData: Record<string, any> = {
-          is_completed: completed,
-          completed_exercises: completedExercises,
-        };
+      const baseUpdateData: Record<string, unknown> = {
+        is_completed: completed,
+      };
+
       if (completedAt) {
-        updateData.updated_at = completedAt;
+        baseUpdateData.completed_at = completedAt;
       }
 
-      const { error } = await supabase
-        .from('workout_sessions')
-        .update(updateData)
-        .eq('id', sessionId);
+      if (completedExercises.length > 0 || completed) {
+        baseUpdateData.completed_exercises = completedExercises;
+      }
 
-      if (error) {
+      const attemptedColumns = new Set<string>();
+      let updateData: Record<string, unknown> = { ...baseUpdateData };
+
+      while (Object.keys(updateData).length > 0) {
+        Object.keys(updateData).forEach((key) => attemptedColumns.add(key));
+
+        const { error } = await supabase
+          .from('workout_sessions')
+          .update(updateData)
+          .eq('id', sessionId);
+
+        if (!error) {
+          console.log('[RemoteRepo] Session completion updated successfully with columns:', Object.keys(updateData));
+          return;
+        }
+
+        const missingColumn = typeof error.message === 'string'
+          ? error.message.match(/Could not find the '([^']+)' column/i)?.[1]
+          : undefined;
+
+        if (error.code === 'PGRST204' && missingColumn && missingColumn in updateData) {
+          console.warn('[RemoteRepo] Missing workout_sessions column detected, retrying without column:', missingColumn);
+          delete updateData[missingColumn];
+          continue;
+        }
+
         console.error('[RemoteRepo] Error updating session completion:', JSON.stringify({
           message: error.message,
           details: error.details,
           hint: error.hint,
           code: error.code,
+          attemptedColumns: Array.from(attemptedColumns),
         }));
         return;
       }
-      console.log('[RemoteRepo] Session completion updated successfully');
+
+      console.warn('[RemoteRepo] Session completion fallback exhausted because no supported columns were left to update');
     } catch (e: any) {
       if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
         console.warn('[RemoteRepo] Network error updating session completion');
