@@ -873,3 +873,13 @@ export const remoteFitnessRepo = {
     }
   },
 };
+
+
+async updateMealCompletion(mealPlanDayId: string, completedMeals: object) {
+  const { error } = await supabase
+    .from('meal_plans')
+    .update({ completed_meals: completedMeals })
+    .eq('id', mealPlanDayId);
+
+  if (error) handleSupabaseError(error, 'Error updating meal completion');
+},
