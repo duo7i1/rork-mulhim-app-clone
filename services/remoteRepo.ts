@@ -872,14 +872,63 @@ export const remoteFitnessRepo = {
       return wrapNetworkError(e);
     }
   },
+
+  async updateExerciseDetails(
+    exerciseId: string,
+    updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>,
+  ) {
+    console.log('[RemoteRepo] Updating exercise details:', exerciseId, updates);
+    try {
+      const updateData: Record<string, unknown> = {};
+
+      if (typeof updates.sets === 'number') {
+        updateData.sets = updates.sets;
+      }
+
+      if (typeof updates.reps === 'string') {
+        updateData.reps = updates.reps;
+      }
+
+      if (typeof updates.rest === 'number') {
+        updateData.rest_seconds = updates.rest;
+      }
+
+      if (typeof updates.assignedWeight === 'string') {
+        updateData.assigned_weight = updates.assignedWeight;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        console.log('[RemoteRepo] No exercise fields to update');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('exercises')
+        .update(updateData)
+        .eq('id', exerciseId);
+
+      if (error) handleSupabaseError(error, 'Error updating exercise details');
+      console.log('[RemoteRepo] Exercise details updated successfully');
+    } catch (e) {
+      return wrapNetworkError(e);
+    }
+  },
+
+  async updateMealCompletion(
+    mealPlanDayId: string,
+    completedMeals: Record<string, unknown>,
+  ) {
+    console.log('[RemoteRepo] Updating meal completion:', mealPlanDayId, completedMeals);
+    try {
+      const { error } = await supabase
+        .from('meal_plans')
+        .update({ completed_meals: completedMeals })
+        .eq('id', mealPlanDayId);
+
+      if (error) handleSupabaseError(error, 'Error updating meal completion');
+      console.log('[RemoteRepo] Meal completion updated successfully');
+    } catch (e) {
+      return wrapNetworkError(e);
+    }
+  },
 };
-
-
-async updateMealCompletion(mealPlanDayId: string, completedMeals: object) {
-  const { error } = await supabase
-    .from('meal_plans')
-    .update({ completed_meals: completedMeals })
-    .eq('id', mealPlanDayId);
-
-  if (error) handleSupabaseError(error, 'Error updating meal completion');
-},

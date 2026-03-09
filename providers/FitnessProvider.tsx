@@ -532,7 +532,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           if (user) {
   void remoteFitnessRepo.updateExerciseDetails(exerciseId, updates);
 }
-  }, [currentWeekPlan]);
+  }, [currentWeekPlan, user]);
 
   const getCurrentWeight = useCallback((): number => {
     if (progress.length > 0) {
@@ -639,39 +639,54 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     await saveGroceryList(updatedList);
   }, [groceryList, saveGroceryList]);
 
-  // بعد بناء updatedDays، وقبل saveMealPlan
-if (user) {
-  const updatedDay = updatedDays.find(d => d.id === dayId);
-  if (updatedDay?.completedMeals) {
-    void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
-  }
-}
+  const toggleMealCompletion = useCallback(async (
+    dayId: string,
+    mealType: "breakfast" | "lunch" | "dinner" | "snack",
+    snackIndex?: number,
+  ) => {
+    if (!currentMealPlan) return;
 
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
         const completedMeals = day.completedMeals || {
-          breakfast: false, lunch: false, dinner: false,
+          breakfast: false,
+          lunch: false,
+          dinner: false,
           snacks: day.snacks.map(() => false),
         };
 
         if (mealType === "snack" && snackIndex !== undefined) {
-          const snacksCompletion = completedMeals.snacks || day.snacks.map(() => false);
+          const snacksCompletion = [...(completedMeals.snacks || day.snacks.map(() => false))];
           snacksCompletion[snackIndex] = !snacksCompletion[snackIndex];
           return { ...day, completedMeals: { ...completedMeals, snacks: snacksCompletion } };
-        } else if (mealType === "breakfast") {
+        }
+
+        if (mealType === "breakfast") {
           return { ...day, completedMeals: { ...completedMeals, breakfast: !completedMeals.breakfast } };
-        } else if (mealType === "lunch") {
+        }
+
+        if (mealType === "lunch") {
           return { ...day, completedMeals: { ...completedMeals, lunch: !completedMeals.lunch } };
-        } else if (mealType === "dinner") {
+        }
+
+        if (mealType === "dinner") {
           return { ...day, completedMeals: { ...completedMeals, dinner: !completedMeals.dinner } };
         }
       }
+
       return day;
     });
 
     const updatedPlan = { ...currentMealPlan, days: updatedDays };
     await saveMealPlan(updatedPlan);
-  }, [currentMealPlan, saveMealPlan]);
+
+    if (user) {
+      const updatedDay = updatedDays.find((day) => day.id === dayId);
+      if (updatedDay?.completedMeals) {
+        void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
+      }
+    }
+  }, [currentMealPlan, saveMealPlan, user]);
 
   const recalcDayTotals = useCallback((day: typeof currentMealPlan extends { days: (infer D)[] } | null ? D : never) => {
     const d = { ...day };
