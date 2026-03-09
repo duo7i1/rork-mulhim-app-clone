@@ -636,8 +636,13 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     await saveGroceryList(updatedList);
   }, [groceryList, saveGroceryList]);
 
-  const toggleMealCompletion = useCallback(async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
-    if (!currentMealPlan) return;
+  // بعد بناء updatedDays، وقبل saveMealPlan
+if (user) {
+  const updatedDay = updatedDays.find(d => d.id === dayId);
+  if (updatedDay?.completedMeals) {
+    void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
+  }
+}
 
     const updatedDays = currentMealPlan.days.map((day) => {
       if (day.id === dayId) {
