@@ -171,10 +171,14 @@ CREATE TABLE IF NOT EXISTS meal_plans (
   total_protein INTEGER DEFAULT 0,
   total_carbs INTEGER DEFAULT 0,
   total_fats INTEGER DEFAULT 0,
+  completed_meals JSONB DEFAULT '{"breakfast": false, "lunch": false, "dinner": false, "snacks": []}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS meal_plans_nutrition_plan_id_idx ON meal_plans(nutrition_plan_id);
+
+ALTER TABLE meal_plans
+ADD COLUMN IF NOT EXISTS completed_meals JSONB DEFAULT '{"breakfast": false, "lunch": false, "dinner": false, "snacks": []}'::jsonb;
 
 -- ============================================
 -- 10. MEALS (individual meals within daily plan)

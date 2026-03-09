@@ -118,15 +118,21 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           await AsyncStorage.removeItem(PROFILE_KEY);
         }
       }
+      const localProgress = progressData ? safeJsonParse<ProgressEntry[]>(progressData, []) : [];
+      const localWorkoutLogs = logsData ? safeJsonParse<WorkoutLog[]>(logsData, []) : [];
+      const localFavoriteExercises = favoriteExercisesData ? safeJsonParse<FavoriteExercise[]>(favoriteExercisesData, []) : [];
+      const localFavoriteMeals = favoriteMealsData ? safeJsonParse<FavoriteMeal[]>(favoriteMealsData, []) : [];
+      const localWeekPlan = weekPlanData ? normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null)) : null;
+      const localNutritionPlan = nutritionPlanData ? safeJsonParse<NutritionPlan | null>(nutritionPlanData, null) : null;
+      const localMealPlan = mealPlanData ? safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null) : null;
+
       if (progressData) {
-        const parsed = safeJsonParse<ProgressEntry[]>(progressData, []);
-        setProgress(parsed);
-        console.log('[FitnessProvider] Cache: Progress hydrated:', parsed.length);
+        setProgress(localProgress);
+        console.log('[FitnessProvider] Cache: Progress hydrated:', localProgress.length);
       }
       if (logsData) {
-        const parsed = safeJsonParse<WorkoutLog[]>(logsData, []);
-        setWorkoutLogs(parsed);
-        console.log('[FitnessProvider] Cache: Workout logs hydrated:', parsed.length);
+        setWorkoutLogs(localWorkoutLogs);
+        console.log('[FitnessProvider] Cache: Workout logs hydrated:', localWorkoutLogs.length);
       }
       if (nutritionData) {
         const parsed = safeJsonParse<NutritionAssessment | null>(nutritionData, null);
@@ -135,12 +141,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           console.log('[FitnessProvider] Cache: Nutrition assessment hydrated');
         }
       }
-      if (mealPlanData) {
-        const parsed = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
-        if (parsed) {
-          setCurrentMealPlan(parsed);
-          console.log('[FitnessProvider] Cache: Meal plan hydrated');
-        }
+      if (mealPlanData && localMealPlan) {
+        setCurrentMealPlan(localMealPlan);
+        console.log('[FitnessProvider] Cache: Meal plan hydrated');
       }
       if (groceryData) {
         const parsed = safeJsonParse<GroceryList | null>(groceryData, null);
@@ -150,28 +153,20 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         }
       }
       if (favoriteExercisesData) {
-        const parsed = safeJsonParse<FavoriteExercise[]>(favoriteExercisesData, []);
-        setFavoriteExercises(parsed);
-        console.log('[FitnessProvider] Cache: Favorite exercises hydrated:', parsed.length);
+        setFavoriteExercises(localFavoriteExercises);
+        console.log('[FitnessProvider] Cache: Favorite exercises hydrated:', localFavoriteExercises.length);
       }
       if (favoriteMealsData) {
-        const parsed = safeJsonParse<FavoriteMeal[]>(favoriteMealsData, []);
-        setFavoriteMeals(parsed);
-        console.log('[FitnessProvider] Cache: Favorite meals hydrated:', parsed.length);
+        setFavoriteMeals(localFavoriteMeals);
+        console.log('[FitnessProvider] Cache: Favorite meals hydrated:', localFavoriteMeals.length);
       }
-      if (weekPlanData) {
-        const parsed = normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null));
-        if (parsed) {
-          setCurrentWeekPlan(parsed);
-          console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions.length, 'sessions');
-        }
+      if (localWeekPlan) {
+        setCurrentWeekPlan(localWeekPlan);
+        console.log('[FitnessProvider] Cache: Week plan hydrated with', localWeekPlan.sessions.length, 'sessions');
       }
-      if (nutritionPlanData) {
-        const parsed = safeJsonParse<NutritionPlan | null>(nutritionPlanData, null);
-        if (parsed) {
-          setNutritionPlan(parsed);
-          console.log('[FitnessProvider] Cache: Nutrition plan hydrated');
-        }
+      if (localNutritionPlan) {
+        setNutritionPlan(localNutritionPlan);
+        console.log('[FitnessProvider] Cache: Nutrition plan hydrated');
       }
 
       if (!user) {
@@ -214,26 +209,25 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
           console.log('[FitnessProvider] Remote: Profile refreshed and cached');
         }
-        if (remoteProgress.length > 0) {
-          setProgress(remoteProgress);
-          await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
-          console.log('[FitnessProvider] Remote: Progress refreshed:', remoteProgress.length);
+        setProgress(remoteProgress);
+        await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
+        console.log('[FitnessProvider] Remote: Progress refreshed:', remoteProgress.length);
+
+        if (remoteProgress.length === 0 && localProgress.length > 0) {
+          console.log('[FitnessProvider] Remote progress empty, keeping local cache and scheduling push later');
         }
-        if (remoteLogs.length > 0) {
-          setWorkoutLogs(remoteLogs);
-          await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
-          console.log('[FitnessProvider] Remote: Workout logs refreshed:', remoteLogs.length);
-        }
-        if (remoteFavExercises.length > 0) {
-          setFavoriteExercises(remoteFavExercises);
-          await AsyncStorage.setItem(FAVORITE_EXERCISES_KEY, JSON.stringify(remoteFavExercises));
-          console.log('[FitnessProvider] Remote: Favorite exercises refreshed:', remoteFavExercises.length);
-        }
-        if (remoteFavMeals.length > 0) {
-          setFavoriteMeals(remoteFavMeals);
-          await AsyncStorage.setItem(FAVORITE_MEALS_KEY, JSON.stringify(remoteFavMeals));
-          console.log('[FitnessProvider] Remote: Favorite meals refreshed:', remoteFavMeals.length);
-        }
+
+        setWorkoutLogs(remoteLogs);
+        await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(remoteLogs));
+        console.log('[FitnessProvider] Remote: Workout logs refreshed:', remoteLogs.length);
+
+        setFavoriteExercises(remoteFavExercises);
+        await AsyncStorage.setItem(FAVORITE_EXERCISES_KEY, JSON.stringify(remoteFavExercises));
+        console.log('[FitnessProvider] Remote: Favorite exercises refreshed:', remoteFavExercises.length);
+
+        setFavoriteMeals(remoteFavMeals);
+        await AsyncStorage.setItem(FAVORITE_MEALS_KEY, JSON.stringify(remoteFavMeals));
+        console.log('[FitnessProvider] Remote: Favorite meals refreshed:', remoteFavMeals.length);
 
         let remoteWorkoutPlan: WeeklyPlan | null = null;
         try {
@@ -276,29 +270,22 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           }
         }
 
-        if (!remoteWorkoutPlan && weekPlanData) {
+        if (!remoteWorkoutPlan && localWeekPlan?.sessions.length) {
           console.log('[FitnessProvider] No remote workout plan but local cache exists, pushing to Supabase');
-          const localWeekPlan = normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null));
-          if (localWeekPlan && localWeekPlan.sessions.length > 0) {
-            remoteFitnessRepo.saveWorkoutPlan(user.id, localWeekPlan).then(() => {
-              console.log('[FitnessProvider] Local workout plan pushed to Supabase');
-            }).catch((err) => {
-              console.warn('[FitnessProvider] Error pushing local workout plan:', err);
-            });
-          }
+          void remoteFitnessRepo.saveWorkoutPlan(user.id, localWeekPlan).then(() => {
+            console.log('[FitnessProvider] Local workout plan pushed to Supabase');
+          }).catch((err) => {
+            console.warn('[FitnessProvider] Error pushing local workout plan:', err);
+          });
         }
 
-        if (!remoteNutrition && nutritionPlanData && mealPlanData) {
+        if (!remoteNutrition && localNutritionPlan) {
           console.log('[FitnessProvider] No remote nutrition plan but local cache exists, pushing to Supabase');
-          const localNutritionPlan = safeJsonParse<NutritionPlan | null>(nutritionPlanData, null);
-          const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
-          if (localNutritionPlan) {
-            remoteFitnessRepo.saveNutritionPlan(user.id, localNutritionPlan, localMealPlan || undefined).then(() => {
-              console.log('[FitnessProvider] Local nutrition plan pushed to Supabase');
-            }).catch((err) => {
-              console.warn('[FitnessProvider] Error pushing local nutrition plan:', err);
-            });
-          }
+          void remoteFitnessRepo.saveNutritionPlan(user.id, localNutritionPlan, localMealPlan || undefined).then(() => {
+            console.log('[FitnessProvider] Local nutrition plan pushed to Supabase');
+          }).catch((err) => {
+            console.warn('[FitnessProvider] Error pushing local nutrition plan:', err);
+          });
         }
 
         console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
@@ -527,11 +514,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     if (!updatedPlan) {
       return;
     }
+
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-          if (user) {
-  void remoteFitnessRepo.updateExerciseDetails(exerciseId, updates);
-}
+
+    if (user) {
+      void remoteFitnessRepo.updateExerciseDetails(exerciseId, updates).catch((error: unknown) => {
+        console.warn('[FitnessProvider] Silent exercise sync failure:', error);
+      });
+    }
   }, [currentWeekPlan, user]);
 
   const getCurrentWeight = useCallback((): number => {
@@ -683,7 +674,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     if (user) {
       const updatedDay = updatedDays.find((day) => day.id === dayId);
       if (updatedDay?.completedMeals) {
-        void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
+        void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals).catch((error: unknown) => {
+          console.warn('[FitnessProvider] Silent meal completion sync failure:', error);
+        });
       }
     }
   }, [currentMealPlan, saveMealPlan, user]);
