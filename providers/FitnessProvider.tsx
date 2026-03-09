@@ -529,6 +529,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
+          if (user) {
+  void remoteFitnessRepo.updateExerciseDetails(exerciseId, updates);
+}
   }, [currentWeekPlan]);
 
   const getCurrentWeight = useCallback((): number => {
