@@ -208,6 +208,13 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           setProfile(remoteProfile);
           await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(remoteProfile));
           console.log('[FitnessProvider] Remote: Profile refreshed and cached');
+
+          const remoteAssessment = (remoteProfile as any).nutritionAssessment as NutritionAssessment | undefined;
+          if (remoteAssessment) {
+            setNutritionAssessment(remoteAssessment);
+            await AsyncStorage.setItem(NUTRITION_KEY, JSON.stringify(remoteAssessment));
+            console.log('[FitnessProvider] Remote: Nutrition assessment restored from profile');
+          }
         }
         setProgress(remoteProgress);
         await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(remoteProgress));
@@ -585,6 +592,11 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(plan));
 
         if (user) {
+          const profileWithAssessment = { ...profile, nutritionAssessment: assessment } as any;
+          void remoteFitnessRepo.upsertProfile(user.id, profileWithAssessment).catch((err: unknown) => {
+            console.warn('[FitnessProvider] Error syncing nutrition assessment to profile:', err);
+          });
+
           remoteFitnessRepo.saveNutritionPlan(user.id, plan).then(() => {
             console.log('[FitnessProvider] Nutrition plan synced to Supabase after assessment');
           }).catch((err) => {

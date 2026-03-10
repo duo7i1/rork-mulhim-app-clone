@@ -79,6 +79,7 @@ export const remoteFitnessRepo = {
           available_days: profile.availableDays,
           session_duration: profile.sessionDuration,
           injuries: profile.injuries || null,
+          nutrition_assessment: (profile as any).nutritionAssessment || null,
         }, { onConflict: 'user_id' })
         .select()
         .single();
@@ -123,7 +124,8 @@ export const remoteFitnessRepo = {
         sessionDuration: row.session_duration,
         injuries: row.injuries || '',
         targetWeight: row.target_weight ? Number(row.target_weight) : undefined,
-      };
+        ...(row.nutrition_assessment ? { nutritionAssessment: row.nutrition_assessment } : {}),
+      } as FitnessProfile;
     } catch (e) {
       return wrapNetworkError(e);
     }
@@ -940,6 +942,74 @@ export const remoteFitnessRepo = {
       console.log('[RemoteRepo] Meal completion updated successfully');
     } catch (e) {
       return wrapNetworkError(e);
+    }
+  },
+
+  async getOrCreateChatSession(userId: string): Promise<string | null> {
+    console.log('[RemoteRepo] Getting or creating chat session for user:', userId);
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.warn('[RemoteRepo] Error fetching chat session:', fetchError.message);
+        return null;
+      }
+
+      if (existing) {
+        console.log('[RemoteRepo] Found existing chat session:', existing.id);
+        return existing.id;
+      }
+
+      const { data: newSession, error: insertError } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: userId,
+          title: 'محادثة مع ملهم',
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.warn('[RemoteRepo] Error creating chat session:', insertError.message);
+        return null;
+      }
+
+      console.log('[RemoteRepo] Created new chat session:', newSession.id);
+      return newSession.id;
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Chat session error:', e?.message);
+      return null;
+    }
+  },
+
+  async saveChatMessage(
+    sessionId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<void> {
+    console.log('[RemoteRepo] Saving chat message, role:', role, 'session:', sessionId);
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sessionId,
+          role,
+          content,
+        });
+
+      if (error) {
+        console.warn('[RemoteRepo] Error saving chat message:', error.message);
+        return;
+      }
+      console.log('[RemoteRepo] Chat message saved successfully');
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Chat message save error:', e?.message);
     }
   },
 };
