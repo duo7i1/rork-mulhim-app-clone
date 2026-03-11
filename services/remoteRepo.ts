@@ -555,63 +555,74 @@ export const remoteFitnessRepo = {
       const nutritionPlanId = npData.id;
 
       if (mealPlan && mealPlan.days.length > 0) {
-        for (const day of mealPlan.days) {
-          const dayNumber = mealPlan.days.indexOf(day) + 1;
-          const { data: mpData, error: mpError } = await supabase
-            .from('meal_plans')
-            .insert({
-              nutrition_plan_id: nutritionPlanId,
-              day_number: dayNumber,
-              day_name: day.day,
-              date: day.date || null,
-              total_calories: Math.round(day.totalCalories || 0),
-              total_protein: Math.round(day.totalProtein || 0),
-              total_carbs: Math.round(day.totalCarbs || 0),
-              total_fats: Math.round(day.totalFats || 0),
-              completed_meals: day.completedMeals || {
-                breakfast: false,
-                lunch: false,
-                dinner: false,
-                snacks: day.snacks.map(() => false),
-              },
-            })
-            .select()
-            .single();
+        const dayRows = mealPlan.days.map((day, idx) => ({
+          nutrition_plan_id: nutritionPlanId,
+          day_number: idx + 1,
+          day_name: day.day,
+          date: day.date || null,
+          total_calories: Math.round(day.totalCalories || 0),
+          total_protein: Math.round(day.totalProtein || 0),
+          total_carbs: Math.round(day.totalCarbs || 0),
+          total_fats: Math.round(day.totalFats || 0),
+          completed_meals: day.completedMeals || {
+            breakfast: false,
+            lunch: false,
+            dinner: false,
+            snacks: day.snacks.map(() => false),
+          },
+        }));
 
-          if (mpError) {
-            console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify(mpError));
-            continue;
-          }
+        const { data: insertedDays, error: batchError } = await supabase
+          .from('meal_plans')
+          .insert(dayRows)
+          .select();
 
-          const allMeals: { meal: MealSuggestion; type: string; idx: number }[] = [];
-          if (day.breakfast) allMeals.push({ meal: day.breakfast, type: 'breakfast', idx: 0 });
-          if (day.lunch) allMeals.push({ meal: day.lunch, type: 'lunch', idx: 1 });
-          if (day.dinner) allMeals.push({ meal: day.dinner, type: 'dinner', idx: 2 });
-          day.snacks.forEach((s, i) => allMeals.push({ meal: s, type: 'snack', idx: 3 + i }));
+        if (batchError) {
+          console.error('[RemoteRepo] Error batch saving meal plan days:', JSON.stringify(batchError));
+        }
 
-          if (allMeals.length > 0) {
-            const mealRows = allMeals.map((m) => ({
-              meal_plan_id: mpData.id,
-              meal_type: m.type,
-              name: m.meal.name,
-              name_ar: m.meal.nameAr || null,
-              calories: Math.round(m.meal.calories || 0),
-              protein: Math.round(m.meal.protein || 0),
-              carbs: Math.round(m.meal.carbs || 0),
-              fats: Math.round(m.meal.fats || 0),
-              ingredients: m.meal.ingredients || [],
-              ingredients_ar: m.meal.ingredientsAr || [],
-              order_index: m.idx,
-            }));
+        if (insertedDays && insertedDays.length > 0) {
+          const sortedInserted = [...insertedDays].sort((a: any, b: any) => a.day_number - b.day_number);
+          const allMealRows: any[] = [];
 
+          sortedInserted.forEach((mpData: any, idx: number) => {
+            const day = mealPlan.days[idx];
+            if (!day) return;
+
+            const allMeals: { meal: MealSuggestion; type: string; idx: number }[] = [];
+            if (day.breakfast) allMeals.push({ meal: day.breakfast, type: 'breakfast', idx: 0 });
+            if (day.lunch) allMeals.push({ meal: day.lunch, type: 'lunch', idx: 1 });
+            if (day.dinner) allMeals.push({ meal: day.dinner, type: 'dinner', idx: 2 });
+            day.snacks.forEach((s, i) => allMeals.push({ meal: s, type: 'snack', idx: 3 + i }));
+
+            allMeals.forEach((m) => {
+              allMealRows.push({
+                meal_plan_id: mpData.id,
+                meal_type: m.type,
+                name: m.meal.name,
+                name_ar: m.meal.nameAr || null,
+                calories: Math.round(m.meal.calories || 0),
+                protein: Math.round(m.meal.protein || 0),
+                carbs: Math.round(m.meal.carbs || 0),
+                fats: Math.round(m.meal.fats || 0),
+                ingredients: m.meal.ingredients || [],
+                ingredients_ar: m.meal.ingredientsAr || [],
+                order_index: m.idx,
+              });
+            });
+          });
+
+          if (allMealRows.length > 0) {
             const { error: mealError } = await supabase
               .from('meals')
-              .insert(mealRows);
+              .insert(allMealRows);
 
             if (mealError) {
-              console.error('[RemoteRepo] Error saving meals:', mealError);
+              console.error('[RemoteRepo] Error batch saving meals:', JSON.stringify(mealError));
             }
           }
+
+          console.log('[RemoteRepo] Batch saved', sortedInserted.length, 'days and', allMealRows.length, 'meals');
         }
       }
 
