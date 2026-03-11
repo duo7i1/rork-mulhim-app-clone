@@ -18,7 +18,18 @@ import type {
 async function retryFetch<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
   for (let i = 0; i <= retries; i++) {
     try {
-      return await fn();
+      const result = await fn();
+      const r = result as any;
+      if (r && typeof r === 'object' && 'error' in r && r.error) {
+        const errMsg = r.error?.message || '';
+        const isNetErr = errMsg.includes('Failed to fetch') || errMsg.includes('TypeError') || errMsg.includes('Network');
+        if (isNetErr && i < retries) {
+          console.log(`[RemoteRepo] Retry ${i + 1}/${retries} after supabase network error`);
+          await new Promise(res => setTimeout(res, delay * (i + 1)));
+          continue;
+        }
+      }
+      return result;
     } catch (e: any) {
       const isNetworkError = e?.message?.includes('Failed to fetch') || e?.name === 'TypeError';
       if (isNetworkError && i < retries) {
@@ -660,7 +671,21 @@ export const remoteFitnessRepo = {
           .order('day_number', { ascending: true })
       );
 
-      if (mpError) handleSupabaseError(mpError, 'Error fetching meal plans');
+      if (mpError) {
+        const errMsg = mpError.message || '';
+        if (errMsg.includes('Failed to fetch') || errMsg.includes('TypeError') || errMsg.includes('Network')) {
+          console.warn('[RemoteRepo] Network error fetching meal plans, returning plan without days');
+          const mealPlan: WeeklyMealPlan = {
+            id: npData.id,
+            weekNumber: 1,
+            startDate: npData.created_at,
+            endDate: '',
+            days: [],
+          };
+          return { plan: nutritionPlan, mealPlan };
+        }
+        handleSupabaseError(mpError, 'Error fetching meal plans');
+      }
 
       const days: DailyMealPlan[] = (mealPlanDays || []).map((mp: any) => {
         const sortedMeals = (mp.meals || []).sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
