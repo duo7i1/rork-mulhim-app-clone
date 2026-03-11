@@ -572,19 +572,14 @@ export const remoteFitnessRepo = {
                 breakfast: false,
                 lunch: false,
                 dinner: false,
-                snacks: (day.snacks || []).map(() => false),
+                snacks: day.snacks.map(() => false),
               },
             })
             .select()
             .single();
 
           if (mpError) {
-            console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify({
-              message: mpError.message,
-              details: mpError.details,
-              hint: mpError.hint,
-              code: mpError.code,
-            }, null, 2));
+            console.error('[RemoteRepo] Error saving meal plan day:', mpError);
             continue;
           }
 
@@ -614,12 +609,7 @@ export const remoteFitnessRepo = {
               .insert(mealRows);
 
             if (mealError) {
-              console.error('[RemoteRepo] Error saving meals:', JSON.stringify({
-                message: mealError.message,
-                details: mealError.details,
-                hint: mealError.hint,
-                code: mealError.code,
-              }, null, 2));
+              console.error('[RemoteRepo] Error saving meals:', mealError);
             }
           }
         }
