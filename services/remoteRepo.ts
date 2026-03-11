@@ -465,108 +465,116 @@ export const remoteFitnessRepo = {
   async saveNutritionPlan(userId: string, plan: NutritionPlan, mealPlan?: WeeklyMealPlan): Promise<string | null> {
     console.log('[RemoteRepo] Saving nutrition plan for user:', userId);
     try {
-      const { data: existingPlans } = await supabase
-        .from('nutrition_plans')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active');
-
-      if (existingPlans && existingPlans.length > 0) {
-        await supabase
+      return await retryFetch(async () => {
+        const { data: existingPlans } = await supabase
           .from('nutrition_plans')
-          .update({ status: 'archived' })
+          .select('id')
           .eq('user_id', userId)
           .eq('status', 'active');
-      }
 
-      const { data: npData, error: npError } = await supabase
-        .from('nutrition_plans')
-        .insert({
-          user_id: userId,
-          name: `Nutrition Plan`,
-          description: plan.recommendations.join(', '),
-          daily_calories_target: Math.round(plan.targetCalories),
-          protein_g: Math.round(plan.macros.protein),
-          carbs_g: Math.round(plan.macros.carbs),
-          fats_g: Math.round(plan.macros.fats),
-          meal_count_per_day: Math.round(plan.mealDistribution.mealsCount),
-          diet_pattern: plan.dietPattern,
-          generated_by: 'ai',
-          status: 'active',
-        })
-        .select()
-        .single();
+        if (existingPlans && existingPlans.length > 0) {
+          await supabase
+            .from('nutrition_plans')
+            .update({ status: 'archived' })
+            .eq('user_id', userId)
+            .eq('status', 'active');
+        }
 
-      if (npError) handleSupabaseError(npError, 'Error saving nutrition plan');
-      const nutritionPlanId = npData.id;
+        const { data: npData, error: npError } = await supabase
+          .from('nutrition_plans')
+          .insert({
+            user_id: userId,
+            name: `Nutrition Plan`,
+            description: plan.recommendations.join(', '),
+            daily_calories_target: Math.round(plan.targetCalories),
+            protein_g: Math.round(plan.macros.protein),
+            carbs_g: Math.round(plan.macros.carbs),
+            fats_g: Math.round(plan.macros.fats),
+            meal_count_per_day: Math.round(plan.mealDistribution.mealsCount),
+            diet_pattern: plan.dietPattern,
+            generated_by: 'ai',
+            status: 'active',
+          })
+          .select()
+          .single();
 
-      if (mealPlan && mealPlan.days.length > 0) {
-        for (const day of mealPlan.days) {
-          const dayNumber = mealPlan.days.indexOf(day) + 1;
-          const { data: mpData, error: mpError } = await supabase
-            .from('meal_plans')
-            .insert({
-              nutrition_plan_id: nutritionPlanId,
-              day_number: dayNumber,
-              day_name: day.day,
-              date: day.date || null,
-              total_calories: Math.round(day.totalCalories || 0),
-              total_protein: Math.round(day.totalProtein || 0),
-              total_carbs: Math.round(day.totalCarbs || 0),
-              total_fats: Math.round(day.totalFats || 0),
-            })
-            .select()
-            .single();
+        if (npError) handleSupabaseError(npError, 'Error saving nutrition plan');
+        const nutritionPlanId = npData.id;
 
-          if (mpError) {
-            console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify({
-              message: mpError.message,
-              details: mpError.details,
-              hint: mpError.hint,
-              code: mpError.code,
-            }));
-            continue;
-          }
+        if (mealPlan && mealPlan.days.length > 0) {
+          for (const day of mealPlan.days) {
+            const dayNumber = mealPlan.days.indexOf(day) + 1;
 
-          const allMeals: { meal: MealSuggestion; type: string; idx: number }[] = [];
-          if (day.breakfast) allMeals.push({ meal: day.breakfast, type: 'breakfast', idx: 0 });
-          if (day.lunch) allMeals.push({ meal: day.lunch, type: 'lunch', idx: 1 });
-          if (day.dinner) allMeals.push({ meal: day.dinner, type: 'dinner', idx: 2 });
-          day.snacks.forEach((s, i) => allMeals.push({ meal: s, type: 'snack', idx: 3 + i }));
-
-          if (allMeals.length > 0) {
-            const mealRows = allMeals.map((m) => ({
-              meal_plan_id: mpData.id,
-              meal_type: m.type,
-              name: m.meal.name || 'Unnamed',
-              name_ar: m.meal.nameAr || null,
-              calories: Math.round(m.meal.calories || 0),
-              protein: Math.round(m.meal.protein || 0),
-              carbs: Math.round(m.meal.carbs || 0),
-              fats: Math.round(m.meal.fats || 0),
-              ingredients: toPostgresArray(ensureStringArray(m.meal.ingredients)),
-              ingredients_ar: toPostgresArray(ensureStringArray(m.meal.ingredientsAr)),
-              order_index: m.idx,
-            }));
-
-            const { error: mealError } = await supabase
-              .from('meals')
-              .insert(mealRows);
-
-            if (mealError) {
-              console.error('[RemoteRepo] Error saving meals:', JSON.stringify({
-                message: mealError.message,
-                details: mealError.details,
-                hint: mealError.hint,
-                code: mealError.code,
+            const mpResult = await retryFetch(async () => {
+              const { data, error } = await supabase
+                .from('meal_plans')
+                .insert({
+                  nutrition_plan_id: nutritionPlanId,
+                  day_number: dayNumber,
+                  day_name: day.day,
+                  date: day.date || null,
+                  total_calories: Math.round(day.totalCalories || 0),
+                  total_protein: Math.round(day.totalProtein || 0),
+                  total_carbs: Math.round(day.totalCarbs || 0),
+                  total_fats: Math.round(day.totalFats || 0),
+                })
+                .select()
+                .single();
+              if (error) throw error;
+              return data;
+            }, 3, 1500).catch((mpErr) => {
+              console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify({
+                message: mpErr.message,
+                details: mpErr.details,
+                hint: mpErr.hint,
+                code: mpErr.code,
               }));
+              return null;
+            });
+
+            if (!mpResult) continue;
+
+            const allMeals: { meal: MealSuggestion; type: string; idx: number }[] = [];
+            if (day.breakfast) allMeals.push({ meal: day.breakfast, type: 'breakfast', idx: 0 });
+            if (day.lunch) allMeals.push({ meal: day.lunch, type: 'lunch', idx: 1 });
+            if (day.dinner) allMeals.push({ meal: day.dinner, type: 'dinner', idx: 2 });
+            day.snacks.forEach((s, i) => allMeals.push({ meal: s, type: 'snack', idx: 3 + i }));
+
+            if (allMeals.length > 0) {
+              const mealRows = allMeals.map((m) => ({
+                meal_plan_id: mpResult.id,
+                meal_type: m.type,
+                name: m.meal.name || 'Unnamed',
+                name_ar: m.meal.nameAr || null,
+                calories: Math.round(m.meal.calories || 0),
+                protein: Math.round(m.meal.protein || 0),
+                carbs: Math.round(m.meal.carbs || 0),
+                fats: Math.round(m.meal.fats || 0),
+                ingredients: toPostgresArray(ensureStringArray(m.meal.ingredients)),
+                ingredients_ar: toPostgresArray(ensureStringArray(m.meal.ingredientsAr)),
+                order_index: m.idx,
+              }));
+
+              await retryFetch(async () => {
+                const { error: mealError } = await supabase
+                  .from('meals')
+                  .insert(mealRows);
+                if (mealError) throw mealError;
+              }, 3, 1500).catch((mealErr) => {
+                console.error('[RemoteRepo] Error saving meals:', JSON.stringify({
+                  message: mealErr.message,
+                  details: mealErr.details,
+                  hint: mealErr.hint,
+                  code: mealErr.code,
+                }));
+              });
             }
           }
         }
-      }
 
-      console.log('[RemoteRepo] Nutrition plan saved successfully, id:', nutritionPlanId);
-      return nutritionPlanId;
+        console.log('[RemoteRepo] Nutrition plan saved successfully, id:', nutritionPlanId);
+        return nutritionPlanId;
+      }, 3, 2000);
     } catch (e) {
       return wrapNetworkError(e);
     }
