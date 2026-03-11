@@ -609,15 +609,6 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   }, [calcTargetCalories, profile, user]);
 
-  const saveMealPlanLocal = useCallback(async (plan: WeeklyMealPlan) => {
-    try {
-      await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(plan));
-      setCurrentMealPlan(plan);
-    } catch (error) {
-      console.error("Error saving meal plan locally:", error);
-    }
-  }, []);
-
   const saveMealPlan = useCallback(async (plan: WeeklyMealPlan) => {
     try {
       await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(plan));
@@ -690,7 +681,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     });
 
     const updatedPlan = { ...currentMealPlan, days: updatedDays };
-    await saveMealPlanLocal(updatedPlan);
+    await saveMealPlan(updatedPlan);
 
     if (user) {
       const updatedDay = updatedDays.find((day) => day.id === dayId);
@@ -700,7 +691,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         });
       }
     }
-  }, [currentMealPlan, saveMealPlanLocal, user]);
+  }, [currentMealPlan, saveMealPlan, user]);
 
   const recalcDayTotals = useCallback((day: typeof currentMealPlan extends { days: (infer D)[] } | null ? D : never) => {
     const d = { ...day };
@@ -728,24 +719,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       }
       return day;
     });
-
-    const updatedPlan = { ...currentMealPlan, days: updatedDays };
-    await saveMealPlanLocal(updatedPlan);
-
-    if (user) {
-      const updatedDay = updatedDays.find((d) => d.id === dayId);
-      if (updatedDay) {
-        void remoteFitnessRepo.syncMealPlanDay(dayId, {
-          totalCalories: updatedDay.totalCalories,
-          totalProtein: updatedDay.totalProtein,
-          totalCarbs: updatedDay.totalCarbs,
-          totalFats: updatedDay.totalFats,
-        }).catch((err: unknown) => {
-          console.warn('[FitnessProvider] Silent addMealToDay sync failure:', err);
-        });
-      }
-    }
-  }, [currentMealPlan, recalcDayTotals, saveMealPlanLocal, user]);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
   const removeMealFromDay = useCallback(async (dayId: string, mealType: "breakfast" | "lunch" | "dinner" | "snack", snackIndex?: number) => {
     if (!currentMealPlan) return;
@@ -767,25 +742,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       }
       return day;
     });
-
-    const updatedPlan = { ...currentMealPlan, days: updatedDays };
-    await saveMealPlanLocal(updatedPlan);
-
-    if (user) {
-      const updatedDay = updatedDays.find((d) => d.id === dayId);
-      if (updatedDay) {
-        void remoteFitnessRepo.syncMealPlanDay(dayId, {
-          totalCalories: updatedDay.totalCalories,
-          totalProtein: updatedDay.totalProtein,
-          totalCarbs: updatedDay.totalCarbs,
-          totalFats: updatedDay.totalFats,
-          completedMeals: updatedDay.completedMeals as Record<string, unknown> | undefined,
-        }).catch((err: unknown) => {
-          console.warn('[FitnessProvider] Silent removeMealFromDay sync failure:', err);
-        });
-      }
-    }
-  }, [currentMealPlan, recalcDayTotals, saveMealPlanLocal, user]);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
   const addGroceryItem = useCallback(async (name: string, category: GroceryList["items"][0]["category"]) => {
     if (!groceryList) return;
@@ -906,24 +864,8 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       }
       return day;
     });
-
-    const updatedPlan = { ...currentMealPlan, days: updatedDays };
-    await saveMealPlanLocal(updatedPlan);
-
-    if (user) {
-      const updatedDay = updatedDays.find((d) => d.id === dayId);
-      if (updatedDay) {
-        void remoteFitnessRepo.syncMealPlanDay(dayId, {
-          totalCalories: updatedDay.totalCalories,
-          totalProtein: updatedDay.totalProtein,
-          totalCarbs: updatedDay.totalCarbs,
-          totalFats: updatedDay.totalFats,
-        }).catch((err: unknown) => {
-          console.warn('[FitnessProvider] Silent updateMealInPlan sync failure:', err);
-        });
-      }
-    }
-  }, [currentMealPlan, recalcDayTotals, saveMealPlanLocal, user]);
+    await saveMealPlan({ ...currentMealPlan, days: updatedDays });
+  }, [currentMealPlan, recalcDayTotals, saveMealPlan]);
 
   const refreshData = useCallback(async () => {
     console.log('[FitnessProvider] Manual refresh triggered');
