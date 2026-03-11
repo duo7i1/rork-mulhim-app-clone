@@ -639,12 +639,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   }, [calcTargetCalories, profile, user]);
 
-  const saveMealPlan = useCallback(async (plan: WeeklyMealPlan) => {
+  const saveMealPlan = useCallback(async (plan: WeeklyMealPlan, skipRemoteSync = false) => {
     try {
       await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(plan));
       setCurrentMealPlan(plan);
 
-      if (user && nutritionPlan) {
+      if (!skipRemoteSync && user && nutritionPlan) {
         remoteFitnessRepo.saveNutritionPlan(user.id, nutritionPlan, plan).catch((err) => {
           console.warn('[FitnessProvider] Error syncing meal plan to Supabase:', err);
         });
@@ -711,13 +711,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     });
 
     const updatedPlan = { ...currentMealPlan, days: updatedDays };
-    await saveMealPlan(updatedPlan);
+    await saveMealPlan(updatedPlan, true);
 
     if (user) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const updatedDay = updatedDays.find((day) => day.id === dayId);
       if (updatedDay?.completedMeals && uuidRegex.test(dayId)) {
-        void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
+        console.log('[FitnessProvider] Saving meal completion to Supabase for day:', dayId, updatedDay.completedMeals);
+        remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals).catch((err) => {
+          console.warn('[FitnessProvider] Error updating meal completion in Supabase:', err);
+        });
+      } else if (updatedDay?.completedMeals) {
+        console.log('[FitnessProvider] Day ID is not a UUID, skipping remote completion update. dayId:', dayId);
       }
     }
   }, [currentMealPlan, saveMealPlan, user]);
