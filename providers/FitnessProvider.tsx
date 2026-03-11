@@ -681,8 +681,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     await saveMealPlan(updatedPlan);
 
     if (user) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const updatedDay = updatedDays.find((day) => day.id === dayId);
-      if (updatedDay?.completedMeals) {
+      if (updatedDay?.completedMeals && uuidRegex.test(dayId)) {
         void remoteFitnessRepo.updateMealCompletion(dayId, updatedDay.completedMeals);
       }
     }
