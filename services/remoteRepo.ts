@@ -173,76 +173,14 @@ export const remoteFitnessRepo = {
     }
   },
 
-  async insertWorkoutLog(userId: string, log: WorkoutLog) {
-    console.log('[RemoteRepo] Inserting workout log for user:', userId);
-    try {
-      const { data, error } = await supabase
-        .from('workout_logs')
-        .insert({
-          user_id: userId,
-          session_id: null,
-          completed_at: log.date,
-          duration_minutes: log.duration,
-          notes: log.notes || null,
-        })
-        .select()
-        .single();
-
-      if (error) handleSupabaseError(error, 'Error inserting workout log');
-
-      if (log.exercises && log.exercises.length > 0 && data) {
-        const exerciseLogs = log.exercises.map((ex) => ({
-          workout_log_id: data.id,
-          exercise_name: ex.exerciseId,
-          sets_completed: ex.sets?.length || 0,
-          reps_completed: ex.sets || [],
-        }));
-
-        const { error: exError } = await supabase
-          .from('exercise_logs')
-          .insert(exerciseLogs);
-
-        if (exError) {
-          console.error('[RemoteRepo] Error inserting exercise logs:', exError);
-        }
-      }
-
-      console.log('[RemoteRepo] Workout log inserted successfully');
-      return data;
-    } catch (e) {
-      return wrapNetworkError(e);
-    }
+  async insertWorkoutLog(_userId: string, _log: WorkoutLog) {
+    console.log('[RemoteRepo] insertWorkoutLog skipped — workout_logs table not available, using local storage only');
+    return null;
   },
 
-  async fetchWorkoutLogs(userId: string): Promise<WorkoutLog[]> {
-    console.log('[RemoteRepo] Fetching workout logs for user:', userId);
-    try {
-      const { data, error } = await supabase
-        .from('workout_logs')
-        .select(`
-          *,
-          exercise_logs (*)
-        `)
-        .eq('user_id', userId)
-        .order('completed_at', { ascending: false });
-
-      if (error) handleSupabaseError(error, 'Error fetching workout logs');
-      console.log('[RemoteRepo] Workout logs fetched:', data?.length);
-
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        sessionId: row.session_id || '',
-        date: row.completed_at,
-        duration: row.duration_minutes || 0,
-        notes: row.notes || '',
-        exercises: (row.exercise_logs || []).map((el: any) => ({
-          exerciseId: el.exercise_name || '',
-          sets: el.reps_completed || [],
-        })),
-      }));
-    } catch (e) {
-      return wrapNetworkError(e);
-    }
+  async fetchWorkoutLogs(_userId: string): Promise<WorkoutLog[]> {
+    console.log('[RemoteRepo] fetchWorkoutLogs skipped — workout_logs table not available, using local storage only');
+    return [];
   },
 
   async saveWorkoutPlan(userId: string, plan: WeeklyPlan): Promise<string | null> {
