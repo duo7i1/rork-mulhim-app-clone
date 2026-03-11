@@ -253,9 +253,26 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           if (remoteNutrition) {
             setNutritionPlan(remoteNutrition.plan);
             await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(remoteNutrition.plan));
-            if (remoteNutrition.mealPlan.days.length > 0) {
+
+            const remoteDays = remoteNutrition.mealPlan.days;
+            const remoteDaysHaveMeals = remoteDays.length > 0 && remoteDays.some(d =>
+              d.breakfast || d.lunch || d.dinner || d.snacks.length > 0
+            );
+
+            if (remoteDaysHaveMeals) {
               setCurrentMealPlan(remoteNutrition.mealPlan);
               await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
+              console.log('[FitnessProvider] Remote: Meal plan refreshed with meals');
+            } else if (remoteDays.length > 0) {
+              console.log('[FitnessProvider] Remote: Meal plan days found but no meals, keeping local cache');
+              const localMealPlanStr = await AsyncStorage.getItem(MEAL_PLAN_KEY);
+              const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(localMealPlanStr, null);
+              if (localMealPlan && localMealPlan.days.some(d => d.breakfast || d.lunch || d.dinner || d.snacks.length > 0)) {
+                console.log('[FitnessProvider] Pushing local meal plan to Supabase since remote has no meals');
+                remoteFitnessRepo.saveNutritionPlan(user.id, remoteNutrition.plan, localMealPlan).catch((err) => {
+                  console.warn('[FitnessProvider] Error re-pushing local meal plan:', err);
+                });
+              }
             }
             console.log('[FitnessProvider] Remote: Nutrition plan refreshed');
           }
@@ -288,15 +305,31 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           }
         }
 
-        if (!remoteNutrition && nutritionPlanData && mealPlanData) {
+        if (!remoteNutrition && (nutritionPlanData || mealPlanData)) {
           console.log('[FitnessProvider] No remote nutrition plan but local cache exists, pushing to Supabase');
           const localNutritionPlan = safeJsonParse<NutritionPlan | null>(nutritionPlanData, null);
           const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
           if (localNutritionPlan) {
             remoteFitnessRepo.saveNutritionPlan(user.id, localNutritionPlan, localMealPlan || undefined).then(() => {
-              console.log('[FitnessProvider] Local nutrition plan pushed to Supabase');
+              console.log('[FitnessProvider] Local nutrition plan + meal plan pushed to Supabase');
             }).catch((err) => {
               console.warn('[FitnessProvider] Error pushing local nutrition plan:', err);
+            });
+          }
+        } else if (remoteNutrition && mealPlanData) {
+          const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
+          const remoteDaysHaveMeals = remoteNutrition.mealPlan.days.some(d =>
+            d.breakfast || d.lunch || d.dinner || d.snacks.length > 0
+          );
+          const localDaysHaveMeals = localMealPlan && localMealPlan.days.some(d =>
+            d.breakfast || d.lunch || d.dinner || d.snacks.length > 0
+          );
+          if (!remoteDaysHaveMeals && localDaysHaveMeals && localMealPlan) {
+            console.log('[FitnessProvider] Remote nutrition exists but no meals, re-pushing local meals');
+            remoteFitnessRepo.saveNutritionPlan(user.id, remoteNutrition.plan, localMealPlan).then(() => {
+              console.log('[FitnessProvider] Local meal plan re-pushed to Supabase');
+            }).catch((err) => {
+              console.warn('[FitnessProvider] Error re-pushing local meal plan:', err);
             });
           }
         }

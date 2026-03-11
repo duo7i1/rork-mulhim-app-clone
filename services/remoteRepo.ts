@@ -45,6 +45,27 @@ function wrapNetworkError(error: any): never {
   throw error;
 }
 
+function ensureStringArray(val: unknown): string[] {
+  if (Array.isArray(val)) return val.map(v => String(v));
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed.map((v: unknown) => String(v));
+    } catch {
+      return val ? [val] : [];
+    }
+  }
+  return [];
+}
+
+function toPostgresArray(arr: string[]): string {
+  const escaped = arr.map(item => {
+    const s = String(item).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return `"${s}"`;
+  });
+  return `{${escaped.join(',')}}`;
+}
+
 function handleSupabaseError(error: any, context: string): never {
   console.error(`[RemoteRepo] ${context}:`, JSON.stringify({
     message: error.message,
@@ -523,8 +544,8 @@ export const remoteFitnessRepo = {
               protein: Math.round(m.meal.protein || 0),
               carbs: Math.round(m.meal.carbs || 0),
               fats: Math.round(m.meal.fats || 0),
-              ingredients: m.meal.ingredients || [],
-              ingredients_ar: m.meal.ingredientsAr || [],
+              ingredients: toPostgresArray(ensureStringArray(m.meal.ingredients)),
+              ingredients_ar: toPostgresArray(ensureStringArray(m.meal.ingredientsAr)),
               order_index: m.idx,
             }));
 
@@ -614,14 +635,21 @@ export const remoteFitnessRepo = {
           protein: m.protein || 0,
           carbs: m.carbs || 0,
           fats: m.fats || 0,
-          ingredients: m.ingredients || [],
-          ingredientsAr: m.ingredients_ar || [],
+          ingredients: ensureStringArray(m.ingredients),
+          ingredientsAr: ensureStringArray(m.ingredients_ar),
         });
 
         const breakfast = sortedMeals.find((m: any) => m.meal_type === 'breakfast');
         const lunch = sortedMeals.find((m: any) => m.meal_type === 'lunch');
         const dinner = sortedMeals.find((m: any) => m.meal_type === 'dinner');
         const snacks = sortedMeals.filter((m: any) => m.meal_type === 'snack');
+
+        const completedMeals = mp.completed_meals ? {
+          breakfast: !!mp.completed_meals.breakfast,
+          lunch: !!mp.completed_meals.lunch,
+          dinner: !!mp.completed_meals.dinner,
+          snacks: Array.isArray(mp.completed_meals.snacks) ? mp.completed_meals.snacks : snacks.map(() => false),
+        } : undefined;
 
         return {
           id: mp.id,
@@ -635,8 +663,18 @@ export const remoteFitnessRepo = {
           totalProtein: mp.total_protein || 0,
           totalCarbs: mp.total_carbs || 0,
           totalFats: mp.total_fats || 0,
+          completedMeals,
         };
       });
+
+      console.log('[RemoteRepo] Nutrition plan fetched with', days.length, 'days, meals per day:', days.map(d => {
+        let count = 0;
+        if (d.breakfast) count++;
+        if (d.lunch) count++;
+        if (d.dinner) count++;
+        count += d.snacks.length;
+        return count;
+      }));
 
       const mealPlan: WeeklyMealPlan = {
         id: npData.id,
