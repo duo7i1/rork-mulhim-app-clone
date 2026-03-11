@@ -555,12 +555,6 @@ export const remoteFitnessRepo = {
               total_protein: Math.round(day.totalProtein),
               total_carbs: Math.round(day.totalCarbs),
               total_fats: Math.round(day.totalFats),
-              completed_meals: day.completedMeals || {
-                breakfast: false,
-                lunch: false,
-                dinner: false,
-                snacks: day.snacks.map(() => false),
-              },
             })
             .select()
             .single();
@@ -681,10 +675,6 @@ export const remoteFitnessRepo = {
         const dinner = sortedMeals.find((m: any) => m.meal_type === 'dinner');
         const snacks = sortedMeals.filter((m: any) => m.meal_type === 'snack');
 
-        const completedMeals = typeof mp.completed_meals === 'object' && mp.completed_meals !== null
-          ? mp.completed_meals as DailyMealPlan['completedMeals']
-          : undefined;
-
         return {
           id: mp.id,
           day: mp.day_name,
@@ -697,7 +687,6 @@ export const remoteFitnessRepo = {
           totalProtein: mp.total_protein || 0,
           totalCarbs: mp.total_carbs || 0,
           totalFats: mp.total_fats || 0,
-          completedMeals: completedMeals,
         };
       });
 
@@ -887,7 +876,7 @@ export const remoteFitnessRepo = {
   async updateExerciseDetails(
     exerciseId: string,
     updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>,
-  ): Promise<void> {
+  ) {
     console.log('[RemoteRepo] Updating exercise details:', exerciseId, updates);
     try {
       const updateData: Record<string, unknown> = {};
@@ -928,7 +917,7 @@ export const remoteFitnessRepo = {
   async updateMealCompletion(
     mealPlanDayId: string,
     completedMeals: Record<string, unknown>,
-  ): Promise<void> {
+  ) {
     console.log('[RemoteRepo] Updating meal completion:', mealPlanDayId, completedMeals);
     try {
       const { error } = await supabase
