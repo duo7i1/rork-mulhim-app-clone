@@ -16,10 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useFitness } from "@/providers/FitnessProvider";
-import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useRorkAgent, createRorkTool } from "@rork-ai/toolkit-sdk";
-import { remoteFitnessRepo } from "@/services/remoteRepo";
 import { z } from "zod";
 
 
@@ -31,7 +29,7 @@ export default function CoachScreen() {
     currentWeekPlan,
     updateWeekPlan,
     currentMealPlan,
-    saveMealPlan,
+    addMealToDay,
     addFavoriteExercise,
     addFavoriteMeal,
   } = useFitness();
@@ -49,9 +47,6 @@ export default function CoachScreen() {
   const [selectedWorkoutDays, setSelectedWorkoutDays] = useState<string[]>([]);
   const [saveWorkoutToFavorites, setSaveWorkoutToFavorites] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const { user } = useAuth();
-  const chatSessionIdRef = useRef<string | null>(null);
-  const savedMessageCountRef = useRef<number>(0);
   
   const { messages, error, sendMessage } = useRorkAgent({
     tools: {
@@ -121,17 +116,6 @@ export default function CoachScreen() {
   });
   
   useEffect(() => {
-    if (user && !chatSessionIdRef.current) {
-      remoteFitnessRepo.getOrCreateChatSession(user.id).then((id) => {
-        chatSessionIdRef.current = id;
-        console.log('[Coach] Chat session ready:', id);
-      }).catch((err) => {
-        console.warn('[Coach] Failed to get chat session:', err);
-      });
-    }
-  }, [user]);
-
-  useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -146,29 +130,8 @@ export default function CoachScreen() {
           setIsGenerating(false);
         }
       }
-
-      if (user && chatSessionIdRef.current && messages.length > savedMessageCountRef.current) {
-        const newMessages = messages.slice(savedMessageCountRef.current);
-        for (const msg of newMessages) {
-          if (msg.role === 'user') {
-            const textPart = msg.parts.find((p: any) => p.type === 'text');
-            if (textPart && textPart.type === 'text') {
-              void remoteFitnessRepo.saveChatMessage(chatSessionIdRef.current!, 'user', textPart.text);
-            }
-          } else if (msg.role === 'assistant') {
-            const isStillStreaming = msg.parts.some((p: any) => p.type === 'tool' && (p.state === 'input-streaming' || p.state === 'input-available'));
-            if (!isStillStreaming) {
-              const textParts = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n');
-              if (textParts) {
-                void remoteFitnessRepo.saveChatMessage(chatSessionIdRef.current!, 'assistant', textParts);
-              }
-            }
-          }
-        }
-        savedMessageCountRef.current = messages.length;
-      }
     }
-  }, [messages, user]);
+  }, [messages]);
   
   const handleSend = () => {
     if (input.trim() && !isGenerating) {
@@ -210,7 +173,7 @@ export default function CoachScreen() {
 
     if (saveWorkoutToFavorites) {
       exercisesWithIds.forEach((ex: any) => {
-        void addFavoriteExercise({
+        addFavoriteExercise({
           name: ex.name,
           sets: ex.sets,
           reps: ex.reps,
@@ -244,7 +207,7 @@ export default function CoachScreen() {
         return session;
       });
 
-      void updateWeekPlan({
+      updateWeekPlan({
         ...currentWeekPlan,
         sessions: updatedSessions,
       });
@@ -293,7 +256,7 @@ export default function CoachScreen() {
     };
 
     if (saveToFavorites) {
-      void addFavoriteMeal({
+      addFavoriteMeal({
         name: selectedData.mealName,
         nameAr: selectedData.mealName,
         type: selectedData.mealType,
@@ -308,29 +271,9 @@ export default function CoachScreen() {
     }
 
     if (currentMealPlan && selectedDays.length > 0 && selectedMealType) {
-      const updatedDays = currentMealPlan.days.map((day) => {
-        if (selectedDays.includes(day.id)) {
-          const updatedDay = { ...day };
-          const uniqueMeal = {
-            ...mealToAdd,
-            id: `ai-meal-${Date.now()}-${day.id}`,
-          };
-          if (selectedMealType === "snack") {
-            updatedDay.snacks = [...day.snacks, uniqueMeal];
-            const cm = updatedDay.completedMeals || { breakfast: false, lunch: false, dinner: false, snacks: [] };
-            updatedDay.completedMeals = { ...cm, snacks: [...(cm.snacks || []), false] };
-          } else {
-            updatedDay[selectedMealType] = uniqueMeal;
-          }
-          updatedDay.totalCalories = (updatedDay.breakfast?.calories || 0) + (updatedDay.lunch?.calories || 0) + (updatedDay.dinner?.calories || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.calories, 0);
-          updatedDay.totalProtein = (updatedDay.breakfast?.protein || 0) + (updatedDay.lunch?.protein || 0) + (updatedDay.dinner?.protein || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.protein, 0);
-          updatedDay.totalCarbs = (updatedDay.breakfast?.carbs || 0) + (updatedDay.lunch?.carbs || 0) + (updatedDay.dinner?.carbs || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.carbs, 0);
-          updatedDay.totalFats = (updatedDay.breakfast?.fats || 0) + (updatedDay.lunch?.fats || 0) + (updatedDay.dinner?.fats || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.fats, 0);
-          return updatedDay;
-        }
-        return day;
+      selectedDays.forEach(dayId => {
+        addMealToDay(dayId, mealToAdd, selectedMealType);
       });
-      void saveMealPlan({ ...currentMealPlan, days: updatedDays });
       savedToPlan = true;
     }
 
