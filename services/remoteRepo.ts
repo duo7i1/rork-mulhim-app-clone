@@ -945,6 +945,145 @@ export const remoteFitnessRepo = {
     }
   },
 
+  async addMealToExistingDay(
+    mealPlanDayId: string,
+    meal: MealSuggestion,
+    mealType: string,
+    orderIndex: number,
+  ): Promise<string | null> {
+    console.log('[RemoteRepo] Adding meal to existing day:', mealPlanDayId, meal.name, mealType);
+    try {
+      const { data, error } = await supabase
+        .from('meals')
+        .insert({
+          meal_plan_id: mealPlanDayId,
+          meal_type: mealType,
+          name: meal.name,
+          name_ar: meal.nameAr || null,
+          calories: Math.round(meal.calories),
+          protein: Math.round(meal.protein),
+          carbs: Math.round(meal.carbs),
+          fats: Math.round(meal.fats),
+          ingredients: meal.ingredients || [],
+          ingredients_ar: meal.ingredientsAr || [],
+          order_index: orderIndex,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('[RemoteRepo] Error adding meal to day:', error.message);
+        return null;
+      }
+      console.log('[RemoteRepo] Meal added to day successfully, id:', data.id);
+      return data.id;
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Network error adding meal to day:', e?.message);
+      return null;
+    }
+  },
+
+  async removeMealFromExistingDay(
+    mealPlanDayId: string,
+    mealType: string,
+    snackIndex?: number,
+  ): Promise<void> {
+    console.log('[RemoteRepo] Removing meal from day:', mealPlanDayId, mealType, 'snackIndex:', snackIndex);
+    try {
+      if (mealType === 'snack' && snackIndex !== undefined) {
+        const { data: snacks } = await supabase
+          .from('meals')
+          .select('id, order_index')
+          .eq('meal_plan_id', mealPlanDayId)
+          .eq('meal_type', 'snack')
+          .order('order_index', { ascending: true });
+
+        if (snacks && snacks[snackIndex]) {
+          await supabase.from('meals').delete().eq('id', snacks[snackIndex].id);
+          console.log('[RemoteRepo] Snack removed at index:', snackIndex);
+        }
+      } else {
+        await supabase
+          .from('meals')
+          .delete()
+          .eq('meal_plan_id', mealPlanDayId)
+          .eq('meal_type', mealType);
+        console.log('[RemoteRepo] Meal removed, type:', mealType);
+      }
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Network error removing meal:', e?.message);
+    }
+  },
+
+  async updateExistingMeal(
+    mealPlanDayId: string,
+    meal: MealSuggestion,
+    mealType: string,
+    snackIndex?: number,
+  ): Promise<void> {
+    console.log('[RemoteRepo] Updating existing meal:', mealPlanDayId, mealType, meal.name);
+    try {
+      const updateData = {
+        name: meal.name,
+        name_ar: meal.nameAr || null,
+        calories: Math.round(meal.calories),
+        protein: Math.round(meal.protein),
+        carbs: Math.round(meal.carbs),
+        fats: Math.round(meal.fats),
+        ingredients: meal.ingredients || [],
+        ingredients_ar: meal.ingredientsAr || [],
+      };
+
+      if (mealType === 'snack' && snackIndex !== undefined) {
+        const { data: snacks } = await supabase
+          .from('meals')
+          .select('id')
+          .eq('meal_plan_id', mealPlanDayId)
+          .eq('meal_type', 'snack')
+          .order('order_index', { ascending: true });
+
+        if (snacks && snacks[snackIndex]) {
+          await supabase.from('meals').update(updateData).eq('id', snacks[snackIndex].id);
+        }
+      } else {
+        await supabase
+          .from('meals')
+          .update(updateData)
+          .eq('meal_plan_id', mealPlanDayId)
+          .eq('meal_type', mealType);
+      }
+      console.log('[RemoteRepo] Meal updated successfully');
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Network error updating meal:', e?.message);
+    }
+  },
+
+  async updateMealPlanDayTotals(
+    mealPlanDayId: string,
+    totals: { totalCalories: number; totalProtein: number; totalCarbs: number; totalFats: number },
+  ): Promise<void> {
+    console.log('[RemoteRepo] Updating meal plan day totals:', mealPlanDayId);
+    try {
+      const { error } = await supabase
+        .from('meal_plans')
+        .update({
+          total_calories: Math.round(totals.totalCalories),
+          total_protein: Math.round(totals.totalProtein),
+          total_carbs: Math.round(totals.totalCarbs),
+          total_fats: Math.round(totals.totalFats),
+        })
+        .eq('id', mealPlanDayId);
+
+      if (error) {
+        console.error('[RemoteRepo] Error updating day totals:', error.message);
+      } else {
+        console.log('[RemoteRepo] Day totals updated successfully');
+      }
+    } catch (e: any) {
+      console.warn('[RemoteRepo] Network error updating day totals:', e?.message);
+    }
+  },
+
   async getOrCreateChatSession(userId: string): Promise<string | null> {
     console.log('[RemoteRepo] Getting or creating chat session for user:', userId);
     try {

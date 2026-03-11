@@ -530,6 +530,16 @@ CREATE POLICY "Users can delete own meals" ON meals
     )
   );
 
+DROP POLICY IF EXISTS "Users can update own meals" ON meals;
+CREATE POLICY "Users can update own meals" ON meals
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM meal_plans mp
+      JOIN nutrition_plans np ON np.id = mp.nutrition_plan_id
+      WHERE mp.id = meals.meal_plan_id AND np.user_id = auth.uid()
+    )
+  );
+
 -- ============================================
 -- RLS POLICIES: favorite_exercises
 -- ============================================

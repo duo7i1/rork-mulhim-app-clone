@@ -31,7 +31,7 @@ export default function CoachScreen() {
     currentWeekPlan,
     updateWeekPlan,
     currentMealPlan,
-    addMealToDay,
+    saveMealPlan,
     addFavoriteExercise,
     addFavoriteMeal,
   } = useFitness();
@@ -308,9 +308,29 @@ export default function CoachScreen() {
     }
 
     if (currentMealPlan && selectedDays.length > 0 && selectedMealType) {
-      selectedDays.forEach(dayId => {
-        void addMealToDay(dayId, mealToAdd, selectedMealType);
+      const updatedDays = currentMealPlan.days.map((day) => {
+        if (selectedDays.includes(day.id)) {
+          const updatedDay = { ...day };
+          const uniqueMeal = {
+            ...mealToAdd,
+            id: `ai-meal-${Date.now()}-${day.id}`,
+          };
+          if (selectedMealType === "snack") {
+            updatedDay.snacks = [...day.snacks, uniqueMeal];
+            const cm = updatedDay.completedMeals || { breakfast: false, lunch: false, dinner: false, snacks: [] };
+            updatedDay.completedMeals = { ...cm, snacks: [...(cm.snacks || []), false] };
+          } else {
+            updatedDay[selectedMealType] = uniqueMeal;
+          }
+          updatedDay.totalCalories = (updatedDay.breakfast?.calories || 0) + (updatedDay.lunch?.calories || 0) + (updatedDay.dinner?.calories || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.calories, 0);
+          updatedDay.totalProtein = (updatedDay.breakfast?.protein || 0) + (updatedDay.lunch?.protein || 0) + (updatedDay.dinner?.protein || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.protein, 0);
+          updatedDay.totalCarbs = (updatedDay.breakfast?.carbs || 0) + (updatedDay.lunch?.carbs || 0) + (updatedDay.dinner?.carbs || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.carbs, 0);
+          updatedDay.totalFats = (updatedDay.breakfast?.fats || 0) + (updatedDay.lunch?.fats || 0) + (updatedDay.dinner?.fats || 0) + updatedDay.snacks.reduce((s: number, sn: any) => s + sn.fats, 0);
+          return updatedDay;
+        }
+        return day;
       });
+      void saveMealPlan({ ...currentMealPlan, days: updatedDays });
       savedToPlan = true;
     }
 
