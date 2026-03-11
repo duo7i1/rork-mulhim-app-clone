@@ -652,12 +652,16 @@ export const remoteFitnessRepo = {
         const dinner = sortedMeals.find((m: any) => m.meal_type === 'dinner');
         const snacks = sortedMeals.filter((m: any) => m.meal_type === 'snack');
 
-        const completedMeals = mp.completed_meals ? {
-          breakfast: !!mp.completed_meals.breakfast,
-          lunch: !!mp.completed_meals.lunch,
-          dinner: !!mp.completed_meals.dinner,
-          snacks: Array.isArray(mp.completed_meals.snacks) ? mp.completed_meals.snacks : snacks.map(() => false),
-        } : undefined;
+        let completedMeals: DailyMealPlan['completedMeals'] = undefined;
+        if (mp.completed_meals && typeof mp.completed_meals === 'object') {
+          completedMeals = {
+            breakfast: !!mp.completed_meals.breakfast,
+            lunch: !!mp.completed_meals.lunch,
+            dinner: !!mp.completed_meals.dinner,
+            snacks: Array.isArray(mp.completed_meals.snacks) ? mp.completed_meals.snacks : snacks.map(() => false),
+          };
+          console.log('[RemoteRepo] Day', mp.day_name, 'completedMeals from DB:', JSON.stringify(completedMeals));
+        }
 
         return {
           id: mp.id,
@@ -919,10 +923,25 @@ export const remoteFitnessRepo = {
         .update({ completed_meals: completedMeals })
         .eq('id', mealPlanDayId);
 
-      if (error) handleSupabaseError(error, 'Error updating meal completion');
+      if (error) {
+        if (error.code === 'PGRST204' || error.message?.includes('completed_meals')) {
+          console.warn('[RemoteRepo] completed_meals column missing in meal_plans table. Run: ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS completed_meals JSONB DEFAULT NULL;');
+          console.warn('[RemoteRepo] Also add UPDATE RLS policy for meal_plans.');
+          return;
+        }
+        if (error.code === '42501' || error.message?.includes('policy')) {
+          console.warn('[RemoteRepo] UPDATE policy missing on meal_plans. Run: CREATE POLICY "Users can update own meal plans" ON meal_plans FOR UPDATE USING (EXISTS (SELECT 1 FROM nutrition_plans WHERE nutrition_plans.id = meal_plans.nutrition_plan_id AND nutrition_plans.user_id = auth.uid()));');
+          return;
+        }
+        handleSupabaseError(error, 'Error updating meal completion');
+      }
       console.log('[RemoteRepo] Meal completion updated successfully');
-    } catch (e) {
-      return wrapNetworkError(e);
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error updating meal completion, saved locally only');
+        return;
+      }
+      console.error('[RemoteRepo] Error updating meal completion:', e?.message || e);
     }
   },
 };

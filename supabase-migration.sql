@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS meal_plans (
   total_protein INTEGER DEFAULT 0,
   total_carbs INTEGER DEFAULT 0,
   total_fats INTEGER DEFAULT 0,
+  completed_meals JSONB DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -487,7 +488,13 @@ CREATE POLICY "Users can insert own meal plans" ON meal_plans
     EXISTS (SELECT 1 FROM nutrition_plans WHERE nutrition_plans.id = nutrition_plan_id AND nutrition_plans.user_id = auth.uid())
   );
 
-DROP POLICY IF EXISTS "Users can delete own meal plans" ON meal_plans;
+DROP POLICY IF EXISTS "Users can update own meal plans" ON meal_plans;
+CREATE POLICY "Users can update own meal plans" ON meal_plans
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM nutrition_plans WHERE nutrition_plans.id = meal_plans.nutrition_plan_id AND nutrition_plans.user_id = auth.uid())
+  );
+
+Drop POLICY IF EXISTS "Users can delete own meal plans" ON meal_plans;
 CREATE POLICY "Users can delete own meal plans" ON meal_plans
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM nutrition_plans WHERE nutrition_plans.id = meal_plans.nutrition_plan_id AND nutrition_plans.user_id = auth.uid())

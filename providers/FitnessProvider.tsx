@@ -260,8 +260,50 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
             );
 
             if (remoteDaysHaveMeals) {
-              setCurrentMealPlan(remoteNutrition.mealPlan);
-              await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
+              const localMealPlanStr = await AsyncStorage.getItem(MEAL_PLAN_KEY);
+              const localMealPlan = safeJsonParse<WeeklyMealPlan | null>(localMealPlanStr, null);
+
+              const remoteHasCompletedMeals = remoteDays.some(d => d.completedMeals && (
+                d.completedMeals.breakfast || d.completedMeals.lunch || d.completedMeals.dinner ||
+                (d.completedMeals.snacks && d.completedMeals.snacks.some(Boolean))
+              ));
+
+              if (!remoteHasCompletedMeals && localMealPlan) {
+                const localHasCompletedMeals = localMealPlan.days.some(d => d.completedMeals && (
+                  d.completedMeals.breakfast || d.completedMeals.lunch || d.completedMeals.dinner ||
+                  (d.completedMeals.snacks && d.completedMeals.snacks.some(Boolean))
+                ));
+
+                if (localHasCompletedMeals) {
+                  console.log('[FitnessProvider] Remote has no completedMeals, merging from local cache');
+                  const mergedDays = remoteDays.map(remoteDay => {
+                    const localDay = localMealPlan.days.find(ld => ld.day === remoteDay.day || ld.id === remoteDay.id);
+                    if (localDay?.completedMeals) {
+                      return { ...remoteDay, completedMeals: localDay.completedMeals };
+                    }
+                    return remoteDay;
+                  });
+                  const mergedMealPlan = { ...remoteNutrition.mealPlan, days: mergedDays };
+                  setCurrentMealPlan(mergedMealPlan);
+                  await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(mergedMealPlan));
+                  console.log('[FitnessProvider] Remote: Meal plan refreshed with local completedMeals merged');
+
+                  for (const day of mergedDays) {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    if (day.completedMeals && uuidRegex.test(day.id)) {
+                      remoteFitnessRepo.updateMealCompletion(day.id, day.completedMeals).catch(err => {
+                        console.warn('[FitnessProvider] Error pushing local completedMeals to remote:', err);
+                      });
+                    }
+                  }
+                } else {
+                  setCurrentMealPlan(remoteNutrition.mealPlan);
+                  await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
+                }
+              } else {
+                setCurrentMealPlan(remoteNutrition.mealPlan);
+                await AsyncStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(remoteNutrition.mealPlan));
+              }
               console.log('[FitnessProvider] Remote: Meal plan refreshed with meals');
             } else if (remoteDays.length > 0) {
               console.log('[FitnessProvider] Remote: Meal plan days found but no meals, keeping local cache');
