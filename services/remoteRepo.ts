@@ -517,12 +517,6 @@ export const remoteFitnessRepo = {
                   total_protein: Math.round(day.totalProtein || 0),
                   total_carbs: Math.round(day.totalCarbs || 0),
                   total_fats: Math.round(day.totalFats || 0),
-                  completed_meals: day.completedMeals ? {
-                    breakfast: !!day.completedMeals.breakfast,
-                    lunch: !!day.completedMeals.lunch,
-                    dinner: !!day.completedMeals.dinner,
-                    snacks: Array.isArray(day.completedMeals.snacks) ? day.completedMeals.snacks : [],
-                  } : null,
                 })
                 .select()
                 .single();
