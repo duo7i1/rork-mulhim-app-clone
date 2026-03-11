@@ -564,10 +564,10 @@ export const remoteFitnessRepo = {
               day_number: dayNumber,
               day_name: day.day,
               date: day.date || null,
-              total_calories: Math.round(day.totalCalories),
-              total_protein: Math.round(day.totalProtein),
-              total_carbs: Math.round(day.totalCarbs),
-              total_fats: Math.round(day.totalFats),
+              total_calories: Math.round(day.totalCalories || 0),
+              total_protein: Math.round(day.totalProtein || 0),
+              total_carbs: Math.round(day.totalCarbs || 0),
+              total_fats: Math.round(day.totalFats || 0),
               completed_meals: day.completedMeals || {
                 breakfast: false,
                 lunch: false,
@@ -579,7 +579,7 @@ export const remoteFitnessRepo = {
             .single();
 
           if (mpError) {
-            console.error('[RemoteRepo] Error saving meal plan day:', mpError);
+            console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify(mpError));
             continue;
           }
 
@@ -595,10 +595,10 @@ export const remoteFitnessRepo = {
               meal_type: m.type,
               name: m.meal.name,
               name_ar: m.meal.nameAr || null,
-              calories: Math.round(m.meal.calories),
-              protein: Math.round(m.meal.protein),
-              carbs: Math.round(m.meal.carbs),
-              fats: Math.round(m.meal.fats),
+              calories: Math.round(m.meal.calories || 0),
+              protein: Math.round(m.meal.protein || 0),
+              carbs: Math.round(m.meal.carbs || 0),
+              fats: Math.round(m.meal.fats || 0),
               ingredients: m.meal.ingredients || [],
               ingredients_ar: m.meal.ingredientsAr || [],
               order_index: m.idx,
@@ -949,6 +949,60 @@ export const remoteFitnessRepo = {
       console.log('[RemoteRepo] Exercise details updated successfully');
     } catch (e) {
       return wrapNetworkError(e);
+    }
+  },
+
+  async syncMealPlanDay(
+    dayId: string,
+    dayData: {
+      totalCalories?: number;
+      totalProtein?: number;
+      totalCarbs?: number;
+      totalFats?: number;
+      completedMeals?: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    console.log('[RemoteRepo] Syncing meal plan day:', dayId);
+    try {
+      const updateData: Record<string, unknown> = {};
+
+      if (typeof dayData.totalCalories === 'number') {
+        updateData.total_calories = Math.round(dayData.totalCalories || 0);
+      }
+      if (typeof dayData.totalProtein === 'number') {
+        updateData.total_protein = Math.round(dayData.totalProtein || 0);
+      }
+      if (typeof dayData.totalCarbs === 'number') {
+        updateData.total_carbs = Math.round(dayData.totalCarbs || 0);
+      }
+      if (typeof dayData.totalFats === 'number') {
+        updateData.total_fats = Math.round(dayData.totalFats || 0);
+      }
+      if (dayData.completedMeals) {
+        updateData.completed_meals = dayData.completedMeals;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        console.log('[RemoteRepo] No meal plan day fields to update');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('meal_plans')
+        .update(updateData)
+        .eq('id', dayId);
+
+      if (error) {
+        console.warn('[RemoteRepo] Error syncing meal plan day:', JSON.stringify(error));
+        return;
+      }
+      console.log('[RemoteRepo] Meal plan day synced successfully');
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error syncing meal plan day');
+      } else {
+        console.warn('[RemoteRepo] Error syncing meal plan day:', e?.message);
+      }
     }
   },
 
