@@ -523,8 +523,8 @@ export const remoteFitnessRepo = {
               protein: Math.round(m.meal.protein || 0),
               carbs: Math.round(m.meal.carbs || 0),
               fats: Math.round(m.meal.fats || 0),
-              ingredients: JSON.stringify(m.meal.ingredients || []),
-              ingredients_ar: JSON.stringify(m.meal.ingredientsAr || []),
+              ingredients: m.meal.ingredients || [],
+              ingredients_ar: m.meal.ingredientsAr || [],
               order_index: m.idx,
             }));
 
