@@ -489,16 +489,21 @@ export const remoteFitnessRepo = {
               day_number: dayNumber,
               day_name: day.day,
               date: day.date || null,
-              total_calories: Math.round(day.totalCalories),
-              total_protein: Math.round(day.totalProtein),
-              total_carbs: Math.round(day.totalCarbs),
-              total_fats: Math.round(day.totalFats),
+              total_calories: Math.round(day.totalCalories || 0),
+              total_protein: Math.round(day.totalProtein || 0),
+              total_carbs: Math.round(day.totalCarbs || 0),
+              total_fats: Math.round(day.totalFats || 0),
             })
             .select()
             .single();
 
           if (mpError) {
-            console.error('[RemoteRepo] Error saving meal plan day:', mpError);
+            console.error('[RemoteRepo] Error saving meal plan day:', JSON.stringify({
+              message: mpError.message,
+              details: mpError.details,
+              hint: mpError.hint,
+              code: mpError.code,
+            }));
             continue;
           }
 
@@ -512,14 +517,14 @@ export const remoteFitnessRepo = {
             const mealRows = allMeals.map((m) => ({
               meal_plan_id: mpData.id,
               meal_type: m.type,
-              name: m.meal.name,
+              name: m.meal.name || 'Unnamed',
               name_ar: m.meal.nameAr || null,
-              calories: Math.round(m.meal.calories),
-              protein: Math.round(m.meal.protein),
-              carbs: Math.round(m.meal.carbs),
-              fats: Math.round(m.meal.fats),
-              ingredients: m.meal.ingredients || [],
-              ingredients_ar: m.meal.ingredientsAr || [],
+              calories: Math.round(m.meal.calories || 0),
+              protein: Math.round(m.meal.protein || 0),
+              carbs: Math.round(m.meal.carbs || 0),
+              fats: Math.round(m.meal.fats || 0),
+              ingredients: JSON.stringify(m.meal.ingredients || []),
+              ingredients_ar: JSON.stringify(m.meal.ingredientsAr || []),
               order_index: m.idx,
             }));
 
@@ -528,7 +533,12 @@ export const remoteFitnessRepo = {
               .insert(mealRows);
 
             if (mealError) {
-              console.error('[RemoteRepo] Error saving meals:', mealError);
+              console.error('[RemoteRepo] Error saving meals:', JSON.stringify({
+                message: mealError.message,
+                details: mealError.details,
+                hint: mealError.hint,
+                code: mealError.code,
+              }));
             }
           }
         }
