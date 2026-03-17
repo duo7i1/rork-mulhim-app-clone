@@ -63,10 +63,13 @@ export function calculateTDEE(profile: FitnessProfile | null, currentWeight: num
   const bmr = calculateBMR(profile, currentWeight);
   if (!profile) return bmr;
 
-  const activityMultipliers: Record<number, number> = {
-    0: 1.2, 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.55, 5: 1.725, 6: 1.725, 7: 1.9,
+  const activityMultipliers: Record<string, number> = {
+    none: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    high: 1.725,
   };
-  const multiplier = activityMultipliers[profile.availableDays] || 1.55;
+  const multiplier = activityMultipliers[profile.activityLevel] || 1.55;
   return bmr * multiplier;
 }
 
@@ -82,35 +85,40 @@ export function getTargetCalories(profile: FitnessProfile | null, currentWeight:
 
 export function calculateMacros(
   calories: number,
-  pattern: DietPattern,
+  _pattern: DietPattern,
   profile: FitnessProfile
 ): MacroDistribution {
-  const proteinPerKg = pattern === 'high_protein_carbs' ? 2.0 : pattern === 'high_protein' ? 1.8 : 1.6;
+  let proteinPerKg = 1.6;
+  if (profile.goal === 'fat_loss') {
+    proteinPerKg = 2.2;
+  } else if (profile.goal === 'muscle_gain') {
+    proteinPerKg = 2.0;
+  }
+
   const protein = profile.weight * proteinPerKg;
   const proteinCalories = protein * 4;
 
-  let carbPercentage = 0.4;
-  let fatPercentage = 0.3;
+  let carbs: number;
+  let fats: number;
 
-  if (pattern === 'high_protein_carbs') {
-    carbPercentage = 0.45;
-    fatPercentage = 0.25;
-  } else if (pattern === 'high_protein') {
-    carbPercentage = 0.35;
-    fatPercentage = 0.3;
-  } else if (pattern === 'moderate_low_carb') {
-    carbPercentage = 0.25;
-    fatPercentage = 0.4;
+  if (profile.goal === 'fat_loss') {
+    fats = (calories * 0.25) / 9;
+    const fatCalories = fats * 9;
+    carbs = (calories - proteinCalories - fatCalories) / 4;
+  } else if (profile.goal === 'muscle_gain') {
+    carbs = (calories * 0.45) / 4;
+    const carbCalories = carbs * 4;
+    fats = (calories - proteinCalories - carbCalories) / 9;
+  } else {
+    carbs = (calories * 0.40) / 4;
+    const carbCalories = carbs * 4;
+    fats = (calories - proteinCalories - carbCalories) / 9;
   }
-
-  const remainingCalories = calories - proteinCalories;
-  const carbs = (remainingCalories * carbPercentage) / 4;
-  const fats = (remainingCalories * fatPercentage) / 9;
 
   return {
     protein: Math.round(protein),
-    carbs: Math.round(carbs),
-    fats: Math.round(fats),
+    carbs: Math.round(Math.max(carbs, 0)),
+    fats: Math.round(Math.max(fats, 0)),
   };
 }
 
