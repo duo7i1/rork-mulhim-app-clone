@@ -504,9 +504,46 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   }, [user]);
 
+  const createWorkoutLogForSession = useCallback(async (session: { id: string; name: string; duration: number; completedAt?: string }) => {
+    const logDate = session.completedAt || new Date().toISOString();
+    const existingLog = workoutLogs.find(l => l.sessionId === session.id);
+    if (existingLog) {
+      console.log('[FitnessProvider] Workout log already exists for session:', session.id);
+      return;
+    }
+
+    const newLog: WorkoutLog = {
+      id: `log-${Date.now()}`,
+      sessionId: session.id,
+      date: logDate,
+      exercises: [],
+      duration: session.duration || 0,
+      notes: session.name,
+    };
+
+    const updated = [...workoutLogs, newLog];
+    setWorkoutLogs(updated);
+    await AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(updated));
+    console.log('[FitnessProvider] Workout log created locally for session:', session.id);
+
+    if (user) {
+      remoteFitnessRepo.insertWorkoutLog(user.id, newLog).then((remote) => {
+        if (remote?.id) {
+          const withRemoteId = updated.map(l => l.sessionId === session.id ? { ...l, id: remote.id } : l);
+          setWorkoutLogs(withRemoteId);
+          AsyncStorage.setItem(WORKOUT_LOGS_KEY, JSON.stringify(withRemoteId)).catch(console.error);
+          console.log('[FitnessProvider] Workout log synced to Supabase, id:', remote.id);
+        }
+      }).catch(err => {
+        console.warn('[FitnessProvider] Error syncing workout log:', err);
+      });
+    }
+  }, [workoutLogs, user]);
+
   const toggleExerciseCompletion = useCallback((sessionId: string, exerciseId: string) => {
     if (!currentWeekPlan) return;
 
+    let justCompleted = false;
     const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
       if (session.id === sessionId) {
         const completedExercises = session.completedExercises || [];
@@ -517,7 +554,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           : [...completedExercises, exerciseId];
 
         const allExercisesCompleted = newCompletedExercises.length === session.exercises.length;
+        const wasAlreadyCompleted = session.completed;
         const newCompletedAt = allExercisesCompleted ? new Date().toISOString() : session.completedAt;
+
+        if (allExercisesCompleted && !wasAlreadyCompleted) {
+          justCompleted = true;
+        }
 
         if (user) {
           void remoteFitnessRepo.updateSessionCompletion(
@@ -544,16 +586,28 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-  }, [currentWeekPlan, user]);
+
+    if (justCompleted) {
+      const completedSession = updatedSessions.find(s => s.id === sessionId);
+      if (completedSession) {
+        void createWorkoutLogForSession(completedSession);
+      }
+    }
+  }, [currentWeekPlan, user, createWorkoutLogForSession]);
 
   const toggleSessionCompletion = useCallback((sessionId: string) => {
     if (!currentWeekPlan) return;
 
+    let justCompleted = false;
     const updatedSessions = (currentWeekPlan.sessions ?? []).map((session) => {
       if (session.id === sessionId) {
         const newCompleted = !session.completed;
         const newCompletedAt = newCompleted ? new Date().toISOString() : undefined;
         const newCompletedExercises = newCompleted ? session.exercises.map((e) => e.id) : [];
+
+        if (newCompleted && !session.completed) {
+          justCompleted = true;
+        }
 
         if (user) {
           void remoteFitnessRepo.updateSessionCompletion(
@@ -580,7 +634,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
     setCurrentWeekPlan(updatedPlan);
     AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(updatedPlan)).catch(console.error);
-  }, [currentWeekPlan, user]);
+
+    if (justCompleted) {
+      const completedSession = updatedSessions.find(s => s.id === sessionId);
+      if (completedSession) {
+        void createWorkoutLogForSession(completedSession);
+      }
+    }
+  }, [currentWeekPlan, user, createWorkoutLogForSession]);
 
   const updateExercise = useCallback((sessionId: string, exerciseId: string, updates: Partial<{ sets: number; reps: string; rest: number; assignedWeight: string }>) => {
     if (!currentWeekPlan) return;
@@ -633,22 +694,34 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const getCurrentStreak = useCallback((): number => {
     if (workoutLogs.length === 0) return 0;
-    const sortedLogs = [...workoutLogs].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    let streak = 0;
-    let currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
 
-    for (const log of sortedLogs) {
-      const logDate = new Date(log.date);
-      logDate.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor(
-        (currentDate.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (diffDays === streak) {
+    const uniqueDays = new Set<string>();
+    for (const log of workoutLogs) {
+      const d = new Date(log.date);
+      const dayStr = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      uniqueDays.add(dayStr);
+    }
+
+    const sortedDays = Array.from(uniqueDays).map(ds => {
+      const parts = ds.split('-').map(Number);
+      const d = new Date(parts[0], parts[1], parts[2]);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }).sort((a, b) => b - a);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    const oneDayMs = 1000 * 60 * 60 * 24;
+
+    let streak = 0;
+    for (let i = 0; i < sortedDays.length; i++) {
+      const expectedDay = todayMs - (streak * oneDayMs);
+      if (sortedDays[i] === expectedDay) {
         streak++;
-      } else if (diffDays > streak) {
+      } else if (streak === 0 && sortedDays[i] === todayMs - oneDayMs) {
+        streak = 1;
+      } else {
         break;
       }
     }

@@ -194,14 +194,73 @@ export const remoteFitnessRepo = {
     }
   },
 
-  async insertWorkoutLog(_userId: string, _log: WorkoutLog) {
-    console.log('[RemoteRepo] insertWorkoutLog skipped — workout_logs table not available, using local storage only');
-    return null;
+  async insertWorkoutLog(userId: string, log: WorkoutLog) {
+    console.log('[RemoteRepo] Inserting workout log for user:', userId, 'sessionId:', log.sessionId);
+    try {
+      const { data: existing } = await supabase
+        .from('workout_logs')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('session_id', log.sessionId)
+        .maybeSingle();
+
+      if (existing) {
+        console.log('[RemoteRepo] Workout log already exists for session:', log.sessionId);
+        return existing;
+      }
+
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .insert({
+          user_id: userId,
+          session_id: log.sessionId || null,
+          completed_at: log.date,
+          duration_minutes: log.duration || 0,
+          notes: log.notes || null,
+        })
+        .select()
+        .single();
+
+      if (error) handleSupabaseError(error, 'Error inserting workout log');
+      console.log('[RemoteRepo] Workout log inserted successfully, id:', data?.id);
+      return data;
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error inserting workout log');
+        return null;
+      }
+      console.error('[RemoteRepo] Error inserting workout log:', e?.message || e);
+      return null;
+    }
   },
 
-  async fetchWorkoutLogs(_userId: string): Promise<WorkoutLog[]> {
-    console.log('[RemoteRepo] fetchWorkoutLogs skipped — workout_logs table not available, using local storage only');
-    return [];
+  async fetchWorkoutLogs(userId: string): Promise<WorkoutLog[]> {
+    console.log('[RemoteRepo] Fetching workout logs for user:', userId);
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('completed_at', { ascending: false });
+
+      if (error) handleSupabaseError(error, 'Error fetching workout logs');
+      console.log('[RemoteRepo] Workout logs fetched:', data?.length);
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        sessionId: row.session_id || '',
+        date: row.completed_at,
+        duration: row.duration_minutes || 0,
+        notes: row.notes || '',
+        exercises: [],
+      }));
+    } catch (e: any) {
+      if (e?.message === 'NETWORK_ERROR' || e?.message?.includes('Failed to fetch')) {
+        console.warn('[RemoteRepo] Network error fetching workout logs');
+        return [];
+      }
+      console.error('[RemoteRepo] Error fetching workout logs:', e?.message || e);
+      return [];
+    }
   },
 
   async saveWorkoutPlan(userId: string, plan: WeeklyPlan): Promise<string | null> {
