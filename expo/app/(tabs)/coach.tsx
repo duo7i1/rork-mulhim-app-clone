@@ -17,12 +17,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useFitness } from "@/providers/FitnessProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { useRorkAgent, createRorkTool } from "@rork-ai/toolkit-sdk";
+import { remoteFitnessRepo } from "@/services/remoteRepo";
 import { z } from "zod";
 
 
 export default function CoachScreen() {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const { 
     profile, 
     getCurrentStreak,
@@ -38,6 +41,8 @@ export default function CoachScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [lastSuggestedWorkout, setLastSuggestedWorkout] = useState<any>(null);
   const [lastSuggestedMeal, setLastSuggestedMeal] = useState<any>(null);
+  const chatSessionId = useRef<string>(`session-${Date.now()}`).current;
+  const savedMessageCount = useRef<number>(0);
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveModalType, setSaveModalType] = useState<"workout" | "meal" | null>(null);
   const [selectedData, setSelectedData] = useState<any>(null);
@@ -130,8 +135,32 @@ export default function CoachScreen() {
           setIsGenerating(false);
         }
       }
+
+      if (user?.id && messages.length > savedMessageCount.current) {
+        const newMessages = messages.slice(savedMessageCount.current);
+        for (const msg of newMessages) {
+          const isUser = msg.role === 'user';
+          const isAssistantDone = msg.role === 'assistant' && !msg.parts.some(
+            (part) => part.type === 'tool' && (part.state === 'input-streaming' || part.state === 'input-available')
+          );
+
+          if (isUser || isAssistantDone) {
+            const textContent = msg.parts
+              .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+              .map((part) => part.text)
+              .join('\n')
+              .trim();
+
+            if (textContent) {
+              console.log('[Coach] Saving chat message to Supabase:', msg.role, textContent.substring(0, 50));
+              void remoteFitnessRepo.saveChatMessage(user.id, msg.role as 'user' | 'assistant', textContent, chatSessionId);
+            }
+          }
+        }
+        savedMessageCount.current = messages.length;
+      }
     }
-  }, [messages]);
+  }, [messages, user?.id, chatSessionId]);
   
   const handleSend = () => {
     if (input.trim() && !isGenerating) {
@@ -173,7 +202,7 @@ export default function CoachScreen() {
 
     if (saveWorkoutToFavorites) {
       exercisesWithIds.forEach((ex: any) => {
-        addFavoriteExercise({
+        void addFavoriteExercise({
           name: ex.name,
           sets: ex.sets,
           reps: ex.reps,
@@ -207,7 +236,7 @@ export default function CoachScreen() {
         return session;
       });
 
-      updateWeekPlan({
+      void updateWeekPlan({
         ...currentWeekPlan,
         sessions: updatedSessions,
       });
@@ -256,7 +285,7 @@ export default function CoachScreen() {
     };
 
     if (saveToFavorites) {
-      addFavoriteMeal({
+      void addFavoriteMeal({
         name: selectedData.mealName,
         nameAr: selectedData.mealName,
         type: selectedData.mealType,
@@ -272,7 +301,7 @@ export default function CoachScreen() {
 
     if (currentMealPlan && selectedDays.length > 0 && selectedMealType) {
       selectedDays.forEach(dayId => {
-        addMealToDay(dayId, mealToAdd, selectedMealType);
+        void addMealToDay(dayId, mealToAdd, selectedMealType);
       });
       savedToPlan = true;
     }

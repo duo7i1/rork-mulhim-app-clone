@@ -971,6 +971,70 @@ export const remoteFitnessRepo = {
     }
   },
 
+  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string, sessionId?: string): Promise<string | null> {
+    console.log('[RemoteRepo] Saving chat message for user:', userId, 'role:', role);
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          user_id: userId,
+          role,
+          content,
+          session_id: sessionId || null,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('[RemoteRepo] Error saving chat message:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }));
+        return null;
+      }
+      console.log('[RemoteRepo] Chat message saved, id:', data?.id);
+      return data?.id || null;
+    } catch (e: any) {
+      console.error('[RemoteRepo] Error saving chat message:', e?.message || e);
+      return null;
+    }
+  },
+
+  async fetchChatMessages(userId: string, sessionId?: string, limit = 50): Promise<{ id: string; role: string; content: string; session_id: string | null; created_at: string }[]> {
+    console.log('[RemoteRepo] Fetching chat messages for user:', userId);
+    try {
+      let query = supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[RemoteRepo] Error fetching chat messages:', JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        }));
+        return [];
+      }
+      console.log('[RemoteRepo] Chat messages fetched:', data?.length);
+      return (data || []).reverse();
+    } catch (e: any) {
+      console.error('[RemoteRepo] Error fetching chat messages:', e?.message || e);
+      return [];
+    }
+  },
+
   async updateMealCompletion(
     mealPlanDayId: string,
     completedMeals: Record<string, unknown>,
