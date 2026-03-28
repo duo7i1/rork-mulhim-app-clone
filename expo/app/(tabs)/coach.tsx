@@ -134,40 +134,39 @@ export default function CoachScreen() {
           setIsGenerating(false);
         }
       }
+    }
+  }, [messages]);
 
-      if (user?.id && messages.length >= 2) {
-        for (let i = lastSavedPairIndex.current; i < messages.length - 1; i += 2) {
-          const userMsg = messages[i];
-          const assistantMsg = messages[i + 1];
-          if (!userMsg || !assistantMsg) break;
-          if (userMsg.role !== 'user' || assistantMsg.role !== 'assistant') continue;
+  const prevIsGenerating = useRef<boolean>(false);
+  useEffect(() => {
+    if (prevIsGenerating.current && !isGenerating && user?.id && messages.length >= 2) {
+      for (let i = lastSavedPairIndex.current; i < messages.length - 1; i += 2) {
+        const userMsg = messages[i];
+        const assistantMsg = messages[i + 1];
+        if (!userMsg || !assistantMsg) break;
+        if (userMsg.role !== 'user' || assistantMsg.role !== 'assistant') continue;
 
-          const isAssistantDone = !assistantMsg.parts.some(
-            (part) => part.type === 'tool' && (part.state === 'input-streaming' || part.state === 'input-available')
-          );
-          if (!isAssistantDone) break;
+        const inputText = userMsg.parts
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
+          .trim();
 
-          const inputText = userMsg.parts
-            .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-            .map((part) => part.text)
-            .join('\n')
-            .trim();
+        const outputText = assistantMsg.parts
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
+          .trim();
 
-          const outputText = assistantMsg.parts
-            .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-            .map((part) => part.text)
-            .join('\n')
-            .trim();
-
-          if (inputText && outputText) {
-            console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output:', outputText.substring(0, 50));
-            void remoteFitnessRepo.saveChatMessage(user.id, inputText, outputText, inputText.substring(0, 100));
-          }
-          lastSavedPairIndex.current = i + 2;
+        if (inputText && outputText) {
+          console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output:', outputText.substring(0, 50));
+          void remoteFitnessRepo.saveChatMessage(user.id, inputText, outputText, inputText.substring(0, 100));
         }
+        lastSavedPairIndex.current = i + 2;
       }
     }
-  }, [messages, user?.id]);
+    prevIsGenerating.current = isGenerating;
+  }, [isGenerating, user?.id, messages]);
   
   const handleSend = () => {
     if (input.trim() && !isGenerating) {
