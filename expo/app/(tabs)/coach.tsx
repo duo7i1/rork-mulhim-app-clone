@@ -52,7 +52,7 @@ export default function CoachScreen() {
   const [saveWorkoutToFavorites, setSaveWorkoutToFavorites] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   
-  const { messages, error, sendMessage } = useRorkAgent({
+  const { messages, error, sendMessage, status } = useRorkAgent({
     tools: {
       suggestWorkout: createRorkTool({
         description: language === 'ar' ? "اقترح تمرين أو عدل خطة التمرين الحالية بناءً على هدف المستخدم ومستواه" : "Suggest a workout or modify the current workout plan based on the user's goal and level",
@@ -124,22 +124,18 @@ export default function CoachScreen() {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-      
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        const hasStreamingPart = lastMessage.parts.some(part => 
-          part.type === 'tool' && (part.state === 'input-streaming' || part.state === 'input-available')
-        );
-        if (!hasStreamingPart) {
-          setIsGenerating(false);
-        }
-      }
     }
   }, [messages]);
 
-  const prevIsGenerating = useRef<boolean>(false);
   useEffect(() => {
-    if (prevIsGenerating.current && !isGenerating && user?.id && messages.length >= 2) {
+    if (status === 'ready' || status === 'error') {
+      setIsGenerating(false);
+    }
+  }, [status]);
+
+  const prevStatus = useRef<string>(status);
+  useEffect(() => {
+    if (prevStatus.current !== 'ready' && status === 'ready' && user?.id && messages.length >= 2) {
       for (let i = lastSavedPairIndex.current; i < messages.length - 1; i += 2) {
         const userMsg = messages[i];
         const assistantMsg = messages[i + 1];
@@ -159,14 +155,14 @@ export default function CoachScreen() {
           .trim();
 
         if (inputText && outputText) {
-          console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output:', outputText.substring(0, 50));
+          console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output length:', outputText.length);
           void remoteFitnessRepo.saveChatMessage(user.id, inputText, outputText, inputText.substring(0, 100));
         }
         lastSavedPairIndex.current = i + 2;
       }
     }
-    prevIsGenerating.current = isGenerating;
-  }, [isGenerating, user?.id, messages]);
+    prevStatus.current = status;
+  }, [status, user?.id, messages]);
   
   const handleSend = () => {
     if (input.trim() && !isGenerating) {
