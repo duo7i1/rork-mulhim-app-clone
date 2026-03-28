@@ -117,7 +117,6 @@ export default function NutritionScreen() {
     { value: "1_meal_snacks", label: t.nutrition.oneMealSnacks, desc: t.nutrition.oneMealSnacksDesc },
     { value: "2_meals", label: t.nutrition.twoMeals, desc: t.nutrition.twoMealsDesc },
     { value: "3_meals", label: t.nutrition.threeMeals, desc: t.nutrition.threeMealsDesc },
-    { value: "3_meals_snacks", label: t.nutrition.threeMealsSnacks, desc: t.nutrition.threeMealsSnacksDesc },
   ];
 
   const scaleNutrition = (meal: MealSuggestion, factor: number): MealSuggestion => {
