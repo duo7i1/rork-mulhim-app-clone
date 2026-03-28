@@ -977,7 +977,6 @@ export const remoteFitnessRepo = {
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
-          user_id: userId,
           role,
           content,
           session_id: sessionId || null,
@@ -1008,7 +1007,6 @@ export const remoteFitnessRepo = {
       let query = supabase
         .from('chat_messages')
         .select('*')
-        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
