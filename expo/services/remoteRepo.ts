@@ -971,15 +971,16 @@ export const remoteFitnessRepo = {
     }
   },
 
-  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string, sessionId?: string): Promise<string | null> {
-    console.log('[RemoteRepo] Saving chat message for user:', userId, 'role:', role);
+  async saveChatMessage(userId: string, input: string, output: string, title?: string): Promise<string | null> {
+    console.log('[RemoteRepo] Saving chat message for user:', userId, 'input:', input.substring(0, 50));
     try {
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
-          role,
-          content,
-          session_id: sessionId || null,
+          user_id: userId,
+          input,
+          output,
+          title: title || null,
         })
         .select('id')
         .single();
@@ -1001,20 +1002,15 @@ export const remoteFitnessRepo = {
     }
   },
 
-  async fetchChatMessages(userId: string, sessionId?: string, limit = 50): Promise<{ id: string; role: string; content: string; session_id: string | null; created_at: string }[]> {
+  async fetchChatMessages(userId: string, limit = 50): Promise<{ id: string; user_id: string; input: string | null; output: string | null; title: string | null; created_at: string }[]> {
     console.log('[RemoteRepo] Fetching chat messages for user:', userId);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
-
-      if (sessionId) {
-        query = query.eq('session_id', sessionId);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('[RemoteRepo] Error fetching chat messages:', JSON.stringify({

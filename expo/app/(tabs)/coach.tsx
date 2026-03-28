@@ -41,8 +41,7 @@ export default function CoachScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [lastSuggestedWorkout, setLastSuggestedWorkout] = useState<any>(null);
   const [lastSuggestedMeal, setLastSuggestedMeal] = useState<any>(null);
-  const chatSessionId = useRef<string>(`session-${Date.now()}`).current;
-  const savedMessageCount = useRef<number>(0);
+  const lastSavedPairIndex = useRef<number>(0);
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveModalType, setSaveModalType] = useState<"workout" | "meal" | null>(null);
   const [selectedData, setSelectedData] = useState<any>(null);
@@ -136,31 +135,39 @@ export default function CoachScreen() {
         }
       }
 
-      if (user?.id && messages.length > savedMessageCount.current) {
-        const newMessages = messages.slice(savedMessageCount.current);
-        for (const msg of newMessages) {
-          const isUser = msg.role === 'user';
-          const isAssistantDone = msg.role === 'assistant' && !msg.parts.some(
+      if (user?.id && messages.length >= 2) {
+        for (let i = lastSavedPairIndex.current; i < messages.length - 1; i += 2) {
+          const userMsg = messages[i];
+          const assistantMsg = messages[i + 1];
+          if (!userMsg || !assistantMsg) break;
+          if (userMsg.role !== 'user' || assistantMsg.role !== 'assistant') continue;
+
+          const isAssistantDone = !assistantMsg.parts.some(
             (part) => part.type === 'tool' && (part.state === 'input-streaming' || part.state === 'input-available')
           );
+          if (!isAssistantDone) break;
 
-          if (isUser || isAssistantDone) {
-            const textContent = msg.parts
-              .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-              .map((part) => part.text)
-              .join('\n')
-              .trim();
+          const inputText = userMsg.parts
+            .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+            .map((part) => part.text)
+            .join('\n')
+            .trim();
 
-            if (textContent) {
-              console.log('[Coach] Saving chat message to Supabase:', msg.role, textContent.substring(0, 50));
-              void remoteFitnessRepo.saveChatMessage(user.id, msg.role as 'user' | 'assistant', textContent, chatSessionId);
-            }
+          const outputText = assistantMsg.parts
+            .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+            .map((part) => part.text)
+            .join('\n')
+            .trim();
+
+          if (inputText && outputText) {
+            console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output:', outputText.substring(0, 50));
+            void remoteFitnessRepo.saveChatMessage(user.id, inputText, outputText, inputText.substring(0, 100));
           }
+          lastSavedPairIndex.current = i + 2;
         }
-        savedMessageCount.current = messages.length;
       }
     }
-  }, [messages, user?.id, chatSessionId]);
+  }, [messages, user?.id]);
   
   const handleSend = () => {
     if (input.trim() && !isGenerating) {
