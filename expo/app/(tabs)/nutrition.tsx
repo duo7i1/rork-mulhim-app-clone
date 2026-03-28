@@ -93,14 +93,14 @@ export default function NutritionScreen() {
   };
 
   const foodItems = [
-    { key: "rice" as const, label: t.nutrition.rice, emoji: "🍚" },
-    { key: "bread" as const, label: t.nutrition.bread, emoji: "🍞" },
-    { key: "chicken" as const, label: t.nutrition.chicken, emoji: "🍗" },
-    { key: "redMeat" as const, label: t.nutrition.redMeat, emoji: "🥩" },
-    { key: "fish" as const, label: t.nutrition.fish, emoji: "🐟" },
-    { key: "vegetables" as const, label: t.nutrition.vegetables, emoji: "🥗" },
-    { key: "fruits" as const, label: t.nutrition.fruits, emoji: "🍎" },
-    { key: "dairy" as const, label: t.nutrition.dairy, emoji: "🥛" },
+    { key: "rice" as const, label: t.nutrition.rice },
+    { key: "bread" as const, label: t.nutrition.bread },
+    { key: "chicken" as const, label: t.nutrition.chicken },
+    { key: "redMeat" as const, label: t.nutrition.redMeat },
+    { key: "fish" as const, label: t.nutrition.fish },
+    { key: "vegetables" as const, label: t.nutrition.vegetables },
+    { key: "fruits" as const, label: t.nutrition.fruits },
+    { key: "dairy" as const, label: t.nutrition.dairy },
   ];
 
   const DAYS = [
@@ -236,7 +236,7 @@ export default function NutritionScreen() {
       days,
     };
 
-    saveMealPlan(weekPlan);
+    void saveMealPlan(weekPlan);
     
     if (groceryList) {
       setTimeout(() => {
@@ -326,7 +326,7 @@ export default function NutritionScreen() {
       days,
     };
 
-    saveMealPlan(weekPlan);
+    void saveMealPlan(weekPlan);
     
     if (groceryList) {
       setTimeout(() => {
@@ -469,7 +469,7 @@ export default function NutritionScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    saveGroceryList(newGroceryList);
+    void saveGroceryList(newGroceryList);
     Alert.alert(t.common.success, t.nutrition.generateGroceryList);
   };
 
@@ -505,7 +505,7 @@ export default function NutritionScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    saveGroceryList(newGroceryList);
+    void saveGroceryList(newGroceryList);
   };
 
   const getCategoryFromIngredient = (ingredient: string): string => {
@@ -563,7 +563,7 @@ export default function NutritionScreen() {
   };
 
   const handleCompleteAssessment = () => {
-    saveNutritionAssessment({
+    void saveNutritionAssessment({
       ...tempAssessment,
       completed: true,
     });
@@ -681,10 +681,10 @@ export default function NutritionScreen() {
               <View key={type} style={styles.mealSection}>
                 <Text style={styles.mealSectionTitle}>
                   {{
-                    breakfast: `🌅 ${t.nutrition.breakfast}`,
-                    lunch: `☀️ ${t.nutrition.lunch}`,
-                    dinner: `🌙 ${t.nutrition.dinner}`,
-                    snacks: `🍎 ${t.nutrition.snack}`,
+                    breakfast: t.nutrition.breakfast,
+                    lunch: t.nutrition.lunch,
+                    dinner: t.nutrition.dinner,
+                    snacks: t.nutrition.snack,
                   }[type]}
                 </Text>
                 {tempAssessment.dietHistory[type].map((meal, index) => (
@@ -733,7 +733,7 @@ export default function NutritionScreen() {
             {foodItems.map((item) => (
               <View key={item.key} style={styles.ffqItem}>
                 <View style={styles.ffqHeader}>
-                  <Text style={styles.ffqEmoji}>{item.emoji}</Text>
+                  
                   <Text style={styles.ffqLabel}>{item.label}</Text>
                 </View>
                 <View style={styles.frequencyOptions}>
@@ -799,7 +799,7 @@ export default function NutritionScreen() {
 
     return (
       <View style={styles.weeklyPlanContainer}>
-        {currentMealPlan.days.map((day, index) => {
+        {currentMealPlan.days.map((day, _index) => {
           const isDayExpanded = expandedDays[day.id] ?? true;
           return (
           <View key={day.id} style={styles.dayCard}>
@@ -834,7 +834,7 @@ export default function NutritionScreen() {
                   </TouchableOpacity>
                   <View style={styles.dayMealContent}>
                     <View style={styles.mealInfo}>
-                      <Text style={styles.dayMealType}>🌅 {t.nutrition.breakfast}</Text>
+                      <Text style={styles.dayMealType}>{t.nutrition.breakfast}</Text>
                       <Text style={[styles.dayMealName, day.completedMeals?.breakfast && styles.dayMealNameCompleted]}>
                         {language === 'ar' ? day.breakfast.nameAr : day.breakfast.name}
                       </Text>
@@ -888,7 +888,7 @@ export default function NutritionScreen() {
                   </TouchableOpacity>
                   <View style={styles.dayMealContent}>
                     <View style={styles.mealInfo}>
-                      <Text style={styles.dayMealType}>☀️ {t.nutrition.lunch}</Text>
+                      <Text style={styles.dayMealType}>{t.nutrition.lunch}</Text>
                       <Text style={[styles.dayMealName, day.completedMeals?.lunch && styles.dayMealNameCompleted]}>
                         {language === 'ar' ? day.lunch.nameAr : day.lunch.name}
                       </Text>
@@ -942,7 +942,7 @@ export default function NutritionScreen() {
                   </TouchableOpacity>
                   <View style={styles.dayMealContent}>
                     <View style={styles.mealInfo}>
-                      <Text style={styles.dayMealType}>🌙 {t.nutrition.dinner}</Text>
+                      <Text style={styles.dayMealType}>{t.nutrition.dinner}</Text>
                       <Text style={[styles.dayMealName, day.completedMeals?.dinner && styles.dayMealNameCompleted]}>
                         {language === 'ar' ? day.dinner.nameAr : day.dinner.name}
                       </Text>
@@ -1002,7 +1002,7 @@ export default function NutritionScreen() {
                       </TouchableOpacity>
                       <View style={styles.dayMealContent}>
                         <View style={styles.mealInfo}>
-                          <Text style={styles.dayMealType}>🍎 {t.nutrition.snack}</Text>
+                          <Text style={styles.dayMealType}>{t.nutrition.snack}</Text>
                           <Text style={[styles.dayMealName, day.completedMeals?.snacks?.[snackIndex] && styles.dayMealNameCompleted]}>
                             {language === 'ar' ? snack.nameAr : snack.name}
                           </Text>
@@ -1062,7 +1062,7 @@ export default function NutritionScreen() {
       return;
     }
     if (addGroceryItem) {
-      addGroceryItem(newGroceryItem.name.trim(), newGroceryItem.category);
+      void addGroceryItem(newGroceryItem.name.trim(), newGroceryItem.category);
       setNewGroceryItem({ name: "", category: "protein" });
       setShowAddGroceryModal(false);
       Alert.alert(t.common.success, t.nutrition.addGroceryItem);
@@ -2433,9 +2433,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 12,
-  },
-  ffqEmoji: {
-    fontSize: 24,
   },
   ffqLabel: {
     fontSize: 16,

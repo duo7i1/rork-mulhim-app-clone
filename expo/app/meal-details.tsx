@@ -330,7 +330,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.protein}g</Text>
               )}
-              <Text style={styles.macroLabel}>🍗 {t.mealDetails.protein}</Text>
+              <Text style={styles.macroLabel}>{t.mealDetails.protein}</Text>
             </View>
             <View style={styles.macroDivider} />
             <View style={styles.macroItem}>
@@ -346,7 +346,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.carbs}g</Text>
               )}
-              <Text style={styles.macroLabel}>🍚 {t.mealDetails.carbs}</Text>
+              <Text style={styles.macroLabel}>{t.mealDetails.carbs}</Text>
             </View>
             <View style={styles.macroDivider} />
             <View style={styles.macroItem}>
@@ -362,7 +362,7 @@ export default function MealDetailsScreen() {
               ) : (
                 <Text style={styles.macroValue}>{meal.fats}g</Text>
               )}
-              <Text style={styles.macroLabel}>🥑 {t.mealDetails.fats}</Text>
+              <Text style={styles.macroLabel}>{t.mealDetails.fats}</Text>
             </View>
           </View>
         </View>
