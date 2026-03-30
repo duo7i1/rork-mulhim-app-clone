@@ -1029,6 +1029,101 @@ export const remoteFitnessRepo = {
     }
   },
 
+  async fetchUserStreak(userId: string): Promise<{ currentStreak: number; longestStreak: number; lastOpenDate: string } | null> {
+    console.log('[RemoteRepo] Fetching user streak for user:', userId);
+    try {
+      const { data, error } = await supabase
+        .from('user_streaks')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[RemoteRepo] Error fetching user streak:', error.message);
+        return null;
+      }
+      if (!data) {
+        console.log('[RemoteRepo] No streak record found');
+        return null;
+      }
+      console.log('[RemoteRepo] Streak fetched:', data.current_streak, 'longest:', data.longest_streak);
+      return {
+        currentStreak: data.current_streak,
+        longestStreak: data.longest_streak,
+        lastOpenDate: data.last_open_date,
+      };
+    } catch (e: any) {
+      console.error('[RemoteRepo] Error fetching user streak:', e?.message || e);
+      return null;
+    }
+  },
+
+  async updateUserStreak(userId: string): Promise<{ currentStreak: number; longestStreak: number } | null> {
+    console.log('[RemoteRepo] Updating user streak for user:', userId);
+    try {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const existing = await this.fetchUserStreak(userId);
+
+      if (!existing) {
+        const { error } = await supabase
+          .from('user_streaks')
+          .insert({
+            user_id: userId,
+            last_open_date: todayStr,
+            current_streak: 1,
+            longest_streak: 1,
+          });
+
+        if (error) {
+          console.error('[RemoteRepo] Error inserting streak:', error.message);
+          return null;
+        }
+        console.log('[RemoteRepo] New streak created');
+        return { currentStreak: 1, longestStreak: 1 };
+      }
+
+      if (existing.lastOpenDate === todayStr) {
+        console.log('[RemoteRepo] Streak already updated today');
+        return { currentStreak: existing.currentStreak, longestStreak: existing.longestStreak };
+      }
+
+      const lastDate = new Date(existing.lastOpenDate + 'T00:00:00');
+      const todayDate = new Date(todayStr + 'T00:00:00');
+      const diffMs = todayDate.getTime() - lastDate.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      let newStreak: number;
+      if (diffDays === 1) {
+        newStreak = existing.currentStreak + 1;
+      } else {
+        newStreak = 1;
+      }
+      const newLongest = Math.max(newStreak, existing.longestStreak);
+
+      const { error } = await supabase
+        .from('user_streaks')
+        .update({
+          last_open_date: todayStr,
+          current_streak: newStreak,
+          longest_streak: newLongest,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[RemoteRepo] Error updating streak:', error.message);
+        return null;
+      }
+      console.log('[RemoteRepo] Streak updated:', newStreak, 'longest:', newLongest);
+      return { currentStreak: newStreak, longestStreak: newLongest };
+    } catch (e: any) {
+      console.error('[RemoteRepo] Error updating user streak:', e?.message || e);
+      return null;
+    }
+  },
+
   async updateMealCompletion(
     mealPlanDayId: string,
     completedMeals: Record<string, unknown>,

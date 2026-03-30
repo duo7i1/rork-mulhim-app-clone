@@ -32,7 +32,7 @@ import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function ProfileScreen() {
   const { t, setLanguage, language } = useLanguage();
-  const { profile, getTargetCalories, calculateBMR, calculateTDEE, workoutLogs, getCurrentStreak, getCurrentWeight, addProgressEntry } = useFitness();
+  const { profile, getTargetCalories, calculateBMR, calculateTDEE, workoutLogs, getCurrentStreak, getLongestStreak, getCurrentWeight, addProgressEntry } = useFitness();
   const { signOut } = useAuth();
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [showWeightModal, setShowWeightModal] = useState<boolean>(false);
@@ -71,6 +71,7 @@ export default function ProfileScreen() {
   const weightChange = currentWeight - startWeight;
   const totalWorkouts = workoutLogs.length;
   const currentStreak = getCurrentStreak();
+  const _longestStreak = getLongestStreak();
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -456,7 +457,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
     setIsSaving(true);
     try {
       await saveProfile(formData as any);
-      updateWeekPlan(null as any);
+      void updateWeekPlan(null as any);
       onClose();
     } catch (error) {
       console.error("Error saving profile:", error);

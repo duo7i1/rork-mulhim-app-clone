@@ -35,6 +35,41 @@ const FAVORITE_MEALS_KEY = "@mulhim_favorite_meals";
 const WEEK_PLAN_KEY = "@mulhim_week_plan";
 const NUTRITION_PLAN_KEY = "@mulhim_nutrition_plan";
 
+function isWeeklyPlanExpired(startDate: string, endDate: string): boolean {
+  if (!startDate && !endDate) return false;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  if (endDate) {
+    try {
+      const end = new Date(endDate);
+      if (!isNaN(end.getTime())) {
+        end.setHours(23, 59, 59, 999);
+        if (now.getTime() > end.getTime()) {
+          console.log('[isWeeklyPlanExpired] Plan expired: endDate', endDate, 'is in the past');
+          return true;
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  if (startDate) {
+    try {
+      const start = new Date(startDate);
+      if (!isNaN(start.getTime())) {
+        start.setHours(0, 0, 0, 0);
+        const daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceStart >= 7) {
+          console.log('[isWeeklyPlanExpired] Plan expired: started', daysSinceStart, 'days ago');
+          return true;
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  return false;
+}
+
 function normalizeWeeklyPlan(plan: WeeklyPlan | null): WeeklyPlan | null {
   if (!plan) return null;
 
@@ -68,6 +103,9 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const [hasRemoteProfile, setHasRemoteProfile] = useState<boolean>(false);
 
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [streakData, setStreakData] = useState<{ currentStreak: number; longestStreak: number }>({ currentStreak: 0, longestStreak: 0 });
+  const [weekPlanExpired, setWeekPlanExpired] = useState<boolean>(false);
+  const [mealPlanExpired, setMealPlanExpired] = useState<boolean>(false);
 
   useEffect(() => {
     void loadData();
@@ -138,8 +176,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (mealPlanData) {
         const parsed = safeJsonParse<WeeklyMealPlan | null>(mealPlanData, null);
         if (parsed) {
-          setCurrentMealPlan(parsed);
-          console.log('[FitnessProvider] Cache: Meal plan hydrated');
+          if (isWeeklyPlanExpired(parsed.startDate, parsed.endDate)) {
+            console.log('[FitnessProvider] Cache: Meal plan EXPIRED, clearing');
+            setMealPlanExpired(true);
+            setCurrentMealPlan(null);
+            await AsyncStorage.removeItem(MEAL_PLAN_KEY);
+          } else {
+            setCurrentMealPlan(parsed);
+            console.log('[FitnessProvider] Cache: Meal plan hydrated');
+          }
         }
       }
       if (groceryData) {
@@ -162,8 +207,15 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (weekPlanData) {
         const parsed = normalizeWeeklyPlan(safeJsonParse<WeeklyPlan | null>(weekPlanData, null));
         if (parsed) {
-          setCurrentWeekPlan(parsed);
-          console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions.length, 'sessions');
+          if (isWeeklyPlanExpired(parsed.startDate, parsed.endDate)) {
+            console.log('[FitnessProvider] Cache: Week plan EXPIRED, clearing');
+            setWeekPlanExpired(true);
+            setCurrentWeekPlan(null);
+            await AsyncStorage.removeItem(WEEK_PLAN_KEY);
+          } else {
+            setCurrentWeekPlan(parsed);
+            console.log('[FitnessProvider] Cache: Week plan hydrated with', parsed.sessions.length, 'sessions');
+          }
         }
       }
       if (nutritionPlanData) {
@@ -180,6 +232,17 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         setHasRemoteProfile(false);
         console.log('[FitnessProvider] No user logged in, using local cache only');
         return;
+      }
+
+      console.log('[FitnessProvider] Step 1.5: Updating daily streak');
+      try {
+        const streakResult = await remoteFitnessRepo.updateUserStreak(user.id);
+        if (streakResult) {
+          setStreakData(streakResult);
+          console.log('[FitnessProvider] Streak updated:', streakResult.currentStreak, 'longest:', streakResult.longestStreak);
+        }
+      } catch (streakErr) {
+        console.warn('[FitnessProvider] Error updating streak:', streakErr);
       }
 
       setRemoteProfileChecked(false);
@@ -239,9 +302,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         try {
           remoteWorkoutPlan = normalizeWeeklyPlan(await remoteFitnessRepo.fetchActiveWorkoutPlan(user.id));
           if (remoteWorkoutPlan && remoteWorkoutPlan.sessions.length > 0) {
-            setCurrentWeekPlan(remoteWorkoutPlan);
-            await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
-            console.log('[FitnessProvider] Remote: Workout plan refreshed with', remoteWorkoutPlan.sessions.length, 'sessions');
+            if (isWeeklyPlanExpired(remoteWorkoutPlan.startDate, remoteWorkoutPlan.endDate)) {
+              console.log('[FitnessProvider] Remote: Workout plan EXPIRED, archiving and clearing');
+              setWeekPlanExpired(true);
+              setCurrentWeekPlan(null);
+              await AsyncStorage.removeItem(WEEK_PLAN_KEY);
+              remoteWorkoutPlan = null;
+            } else {
+              setWeekPlanExpired(false);
+              setCurrentWeekPlan(remoteWorkoutPlan);
+              await AsyncStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(remoteWorkoutPlan));
+              console.log('[FitnessProvider] Remote: Workout plan refreshed with', remoteWorkoutPlan.sessions.length, 'sessions');
+            }
           }
         } catch (wpErr) {
           console.warn('[FitnessProvider] Could not fetch workout plan:', wpErr);
@@ -251,6 +323,16 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         try {
           remoteNutrition = await remoteFitnessRepo.fetchActiveNutritionPlan(user.id);
           if (remoteNutrition) {
+            if (isWeeklyPlanExpired(remoteNutrition.mealPlan.startDate, remoteNutrition.mealPlan.endDate)) {
+              console.log('[FitnessProvider] Remote: Meal plan EXPIRED, clearing');
+              setMealPlanExpired(true);
+              setCurrentMealPlan(null);
+              setNutritionPlan(null);
+              await AsyncStorage.removeItem(MEAL_PLAN_KEY);
+              await AsyncStorage.removeItem(NUTRITION_PLAN_KEY);
+              remoteNutrition = null;
+            } else {
+            setMealPlanExpired(false);
             setNutritionPlan(remoteNutrition.plan);
             await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(remoteNutrition.plan));
 
@@ -317,6 +399,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
               }
             }
             console.log('[FitnessProvider] Remote: Nutrition plan refreshed');
+            }
           }
         } catch (npErr) {
           console.warn('[FitnessProvider] Could not fetch nutrition plan:', npErr);
@@ -693,40 +776,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   }, [getCurrentWeight, profile]);
 
   const getCurrentStreak = useCallback((): number => {
-    if (workoutLogs.length === 0) return 0;
+    return streakData.currentStreak;
+  }, [streakData.currentStreak]);
 
-    const uniqueDays = new Set<string>();
-    for (const log of workoutLogs) {
-      const d = new Date(log.date);
-      const dayStr = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      uniqueDays.add(dayStr);
-    }
-
-    const sortedDays = Array.from(uniqueDays).map(ds => {
-      const parts = ds.split('-').map(Number);
-      const d = new Date(parts[0], parts[1], parts[2]);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }).sort((a, b) => b - a);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMs = today.getTime();
-    const oneDayMs = 1000 * 60 * 60 * 24;
-
-    let streak = 0;
-    for (let i = 0; i < sortedDays.length; i++) {
-      const expectedDay = todayMs - (streak * oneDayMs);
-      if (sortedDays[i] === expectedDay) {
-        streak++;
-      } else if (streak === 0 && sortedDays[i] === todayMs - oneDayMs) {
-        streak = 1;
-      } else {
-        break;
-      }
-    }
-    return streak;
-  }, [workoutLogs]);
+  const getLongestStreak = useCallback((): number => {
+    return streakData.longestStreak;
+  }, [streakData.longestStreak]);
 
   const saveNutritionAssessment = useCallback(async (assessment: NutritionAssessment) => {
     try {
@@ -1053,10 +1108,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     getTargetCalories: calcTargetCalories,
     getCurrentWeight,
     getCurrentStreak,
+    getLongestStreak,
     refreshData,
     hasProfile: user
       ? (remoteProfileChecked ? (hasRemoteProfile || !!profile) : !!profile)
       : !!profile,
+    streakData,
+    weekPlanExpired,
+    mealPlanExpired,
     loadError,
   }), [
     profile,
@@ -1095,10 +1154,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     calcTargetCalories,
     getCurrentWeight,
     getCurrentStreak,
+    getLongestStreak,
     refreshData,
     user,
     remoteProfileChecked,
     hasRemoteProfile,
+    streakData,
+    weekPlanExpired,
+    mealPlanExpired,
     loadError,
   ]);
 });
