@@ -85,7 +85,7 @@ export default function WelcomeScreen() {
         </Animated.View>
         
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ملهم</Text>
+          <Text style={styles.footerText}>Mulhim</Text>
         </View>
       </SafeAreaView>
     </View>

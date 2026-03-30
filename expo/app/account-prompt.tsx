@@ -83,7 +83,7 @@ export default function AccountPromptScreen() {
         </Animated.View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ملهم</Text>
+          <Text style={styles.footerText}>{t.profile.appName}</Text>
         </View>
       </SafeAreaView>
     </View>

@@ -61,10 +61,18 @@ export default function ProfileScreen() {
     setNewWeight("");
   };
 
-  const goalLabel = profile?.goal
-    ?.replace("_", " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-  const levelLabel = profile?.fitnessLevel?.replace(/\b\w/g, (l) => l.toUpperCase());
+  const goalLabelsMap: Record<string, string> = {
+    fat_loss: t.profile.goalFatLoss,
+    muscle_gain: t.profile.goalMuscleGain,
+    general_fitness: t.profile.goalGeneralFitness,
+  };
+  const levelLabelsMap: Record<string, string> = {
+    beginner: t.profile.levelBeginner,
+    intermediate: t.profile.levelIntermediate,
+    advanced: t.profile.levelAdvanced,
+  };
+  const goalLabel = profile?.goal ? goalLabelsMap[profile.goal] ?? profile.goal : '';
+  const levelLabel = profile?.fitnessLevel ? levelLabelsMap[profile.fitnessLevel] ?? profile.fitnessLevel : '';
   
   const currentWeight = getCurrentWeight();
   const startWeight = profile?.weight || 0;
@@ -258,7 +266,7 @@ export default function ProfileScreen() {
                   <View style={styles.activityInfo}>
                     <Text style={styles.activityTitle}>{t.profile.completedWorkout}</Text>
                     <Text style={styles.activityDate}>
-                      {new Date(log.date).toLocaleDateString('ar')}
+                      {new Date(log.date).toLocaleDateString(language === 'ar' ? 'ar' : 'en')}
                     </Text>
                   </View>
                   <Text style={styles.activityDuration}>{log.duration} {t.common.minutes}</Text>

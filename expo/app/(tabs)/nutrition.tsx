@@ -457,7 +457,7 @@ export default function NutritionScreen() {
       id: `item-${index}`,
       name: key,
       nameAr: value.nameAr,
-      quantity: "حسب الحاجة",
+      quantity: t.plan.asNeeded,
       category: value.category as GroceryItem["category"],
       checked: false,
     }));
@@ -493,7 +493,7 @@ export default function NutritionScreen() {
       id: `item-${index}`,
       name: key,
       nameAr: value.nameAr,
-      quantity: "حسب الحاجة",
+      quantity: t.plan.asNeeded,
       category: value.category as GroceryItem["category"],
       checked: false,
     }));

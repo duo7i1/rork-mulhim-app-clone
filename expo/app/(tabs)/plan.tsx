@@ -136,7 +136,7 @@ export default function PlanScreen() {
                     <View style={styles.favoriteExerciseInfo}>
                       <Text style={styles.favoriteExerciseName}>{exercise.name}</Text>
                       <Text style={styles.favoriteExerciseDetails}>
-                        {exercise.sets} sets × {exercise.reps} reps · {exercise.rest}s rest
+                        {exercise.sets} {t.plan.setsUnit} × {exercise.reps} {t.plan.repsUnit} · {exercise.rest}s {t.plan.restUnit}
                       </Text>
                     </View>
                     <View style={styles.favoriteExerciseActions}>
@@ -274,7 +274,7 @@ export default function PlanScreen() {
                           )}
                         </View>
                         <Text style={styles.exerciseDetails}>
-                          {exercise.sets} sets × {exercise.reps} reps · {exercise.rest}s rest · {exercise.assignedWeight && exercise.assignedWeight.toLowerCase().includes('body') ? "-" : exercise.assignedWeight ? exercise.assignedWeight : (exercise.equipment.length === 0 ? "-" : "N/A")}
+                          {exercise.sets} {t.plan.setsUnit} × {exercise.reps} {t.plan.repsUnit} · {exercise.rest}s {t.plan.restUnit} · {exercise.assignedWeight && exercise.assignedWeight.toLowerCase().includes('body') ? "-" : exercise.assignedWeight ? exercise.assignedWeight : (exercise.equipment.length === 0 ? "-" : "N/A")}
                         </Text>
                       </View>
                     </View>
@@ -676,7 +676,7 @@ export default function PlanScreen() {
                       <View style={styles.addExerciseItemInfo}>
                         <Text style={styles.addExerciseItemName}>{exercise.name}</Text>
                         <Text style={styles.addExerciseItemDetails}>
-                          {exercise.sets} sets × {exercise.reps} reps
+                          {exercise.sets} {t.plan.setsUnit} × {exercise.reps} {t.plan.repsUnit}
                         </Text>
                       </View>
                       <Plus size={20} color={Colors.primary} />
@@ -737,7 +737,7 @@ export default function PlanScreen() {
                           <View style={styles.addExerciseItemInfo}>
                             <Text style={styles.addExerciseItemName}>{exercise.name}</Text>
                             <Text style={styles.addExerciseItemDetails}>
-                              {exercise.sets} sets × {exercise.reps} reps
+                              {exercise.sets} {t.plan.setsUnit} × {exercise.reps} {t.plan.repsUnit}
                             </Text>
                           </View>
                           <Plus size={20} color={Colors.primary} />

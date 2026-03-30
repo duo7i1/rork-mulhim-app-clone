@@ -15,6 +15,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState<string>("");
@@ -22,10 +23,11 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { signIn } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert(t.common.error, t.auth.fillAllFields);
       return;
     }
 
@@ -34,7 +36,7 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       router.replace("/");
     } catch (error: any) {
-      Alert.alert("Login Failed", error.message || "Please check your credentials");
+      Alert.alert(t.auth.loginFailed, error.message || t.auth.checkCredentials);
     } finally {
       setIsLoading(false);
     }
@@ -51,16 +53,16 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your fitness journey</Text>
+            <Text style={styles.title}>{t.auth.welcomeBack}</Text>
+            <Text style={styles.subtitle}>{t.auth.signInContinue}</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t.auth.email}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="your@email.com"
+                placeholder={t.auth.emailPlaceholder}
                 placeholderTextColor={Colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -72,10 +74,10 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t.auth.password}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your password"
+                placeholder={t.auth.enterPassword}
                 placeholderTextColor={Colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
@@ -93,17 +95,17 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>{t.auth.signIn}</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Text style={styles.footerText}>{t.auth.noAccount} </Text>
               <TouchableOpacity
                 onPress={() => router.push("/auth/signup" as any)}
                 disabled={isLoading}
               >
-                <Text style={styles.linkText}>Sign Up</Text>
+                <Text style={styles.linkText}>{t.auth.signUp}</Text>
               </TouchableOpacity>
             </View>
           </View>

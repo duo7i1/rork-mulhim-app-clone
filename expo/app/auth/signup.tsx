@@ -15,6 +15,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function SignupScreen() {
   const [email, setEmail] = useState<string>("");
@@ -23,20 +24,21 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { signUp } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleSignup = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert(t.common.error, t.auth.fillAllFields);
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert(t.common.error, t.auth.passwordsDontMatch);
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      Alert.alert(t.common.error, t.auth.passwordTooShort);
       return;
     }
 
@@ -44,10 +46,10 @@ export default function SignupScreen() {
     try {
       await signUp(email.trim(), password);
       Alert.alert(
-        "Success",
-        "Account created successfully!",
+        t.common.success,
+        t.auth.accountCreated,
         [{ 
-          text: "OK", 
+          text: t.mealDetails.ok, 
           onPress: () => {
             if (router.canGoBack()) {
               router.back();
@@ -63,18 +65,18 @@ export default function SignupScreen() {
       
       if (errorMessage.includes('already exists') || errorMessage.includes('already registered')) {
         Alert.alert(
-          "Account Exists",
-          "An account with this email already exists.",
+          t.auth.accountExists,
+          t.auth.accountExistsMsg,
           [
-            { text: "Cancel", style: "cancel" },
+            { text: t.common.cancel, style: "cancel" },
             { 
-              text: "Sign In", 
+              text: t.auth.signIn, 
               onPress: () => router.push("/auth/login" as any)
             }
           ]
         );
       } else {
-        Alert.alert("Signup Failed", errorMessage);
+        Alert.alert(t.auth.signupFailed, errorMessage);
       }
     } finally {
       setIsLoading(false);
@@ -92,16 +94,16 @@ export default function SignupScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Start your fitness transformation today</Text>
+            <Text style={styles.title}>{t.auth.createAccountTitle}</Text>
+            <Text style={styles.subtitle}>{t.auth.startTransformation}</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t.auth.email}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="your@email.com"
+                placeholder={t.auth.emailPlaceholder}
                 placeholderTextColor={Colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -113,10 +115,10 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t.auth.password}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="At least 6 characters"
+                placeholder={t.auth.atLeast6Chars}
                 placeholderTextColor={Colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
@@ -127,10 +129,10 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>{t.auth.confirmPassword}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Re-enter your password"
+                placeholder={t.auth.reenterPassword}
                 placeholderTextColor={Colors.textSecondary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -148,17 +150,17 @@ export default function SignupScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign Up</Text>
+                <Text style={styles.buttonText}>{t.auth.signUp}</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerText}>{t.auth.haveAccount} </Text>
               <TouchableOpacity
                 onPress={() => router.back()}
                 disabled={isLoading}
               >
-                <Text style={styles.linkText}>Sign In</Text>
+                <Text style={styles.linkText}>{t.auth.signIn}</Text>
               </TouchableOpacity>
             </View>
           </View>

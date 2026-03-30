@@ -342,28 +342,28 @@ export default function CoachScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsScroll}>
         <TouchableOpacity 
           style={[styles.quickActionButton, isGenerating && styles.quickActionButtonDisabled]}
-          onPress={() => handleQuickAction("اقترح لي تمرين اليوم")}
+          onPress={() => handleQuickAction(t.coach.quickWorkout)}
           disabled={isGenerating}
         >
           <Text style={styles.quickActionText}>{t.coach.todayWorkout}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.quickActionButton, isGenerating && styles.quickActionButtonDisabled]}
-          onPress={() => handleQuickAction("اقترح لي وجبة غداء سعودية صحية")}
+          onPress={() => handleQuickAction(t.coach.quickMeal)}
           disabled={isGenerating}
         >
           <Text style={styles.quickActionText}>{t.coach.todayMeal}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.quickActionButton, isGenerating && styles.quickActionButtonDisabled]}
-          onPress={() => handleQuickAction("كيف تقدمي حتى الآن؟")}
+          onPress={() => handleQuickAction(t.coach.quickProgress)}
           disabled={isGenerating}
         >
           <Text style={styles.quickActionText}>{t.coach.analyzeProgress}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.quickActionButton, isGenerating && styles.quickActionButtonDisabled]}
-          onPress={() => handleQuickAction("نصائح لتحسين نتائجي")}
+          onPress={() => handleQuickAction(t.coach.quickTips)}
           disabled={isGenerating}
         >
           <Text style={styles.quickActionText}>{t.coach.tips}</Text>
@@ -459,7 +459,7 @@ export default function CoachScreen() {
                         if (part.state === 'output-available') {
                           return (
                             <View key={`tool-output-${message.id || msgIndex}-${index}`} style={styles.toolSuccess}>
-                              <Text style={styles.toolSuccessText}>✓ {typeof part.output === 'string' ? part.output : 'تم بنجاح'}</Text>
+                              <Text style={styles.toolSuccessText}>✓ {typeof part.output === 'string' ? part.output : t.coach.toolSuccess}</Text>
                             </View>
                           );
                         }

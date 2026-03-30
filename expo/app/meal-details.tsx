@@ -153,8 +153,9 @@ export default function MealDetailsScreen() {
   }
 
   const [editedMeal, setEditedMeal] = useState<MealSuggestion | null>(originalMeal);
+  const asNeededText = language === 'ar' ? 'حسب الحاجة' : 'As needed';
   const [editedIngredients, setEditedIngredients] = useState<{ nameAr: string; weight: string; volume: string }[]>(originalMeal ? originalMeal.ingredientsAr.map(ing => {
-    const measurement = ingredientMeasurements[ing] || { nameAr: ing, weight: "حسب الحاجة", volume: "حسب الحاجة" };
+    const measurement = ingredientMeasurements[ing] || { nameAr: ing, weight: asNeededText, volume: asNeededText };
     return measurement;
   }) : []);
 
@@ -215,14 +216,14 @@ export default function MealDetailsScreen() {
   const handleCancel = () => {
     setEditedMeal(originalMeal);
     setEditedIngredients(originalMeal ? originalMeal.ingredientsAr.map(ing => {
-      const measurement = ingredientMeasurements[ing] || { nameAr: ing, weight: "حسب الحاجة", volume: "حسب الحاجة" };
+      const measurement = ingredientMeasurements[ing] || { nameAr: ing, weight: asNeededText, volume: asNeededText };
       return measurement;
     }) : []);
     setIsEditing(false);
   };
 
   const addIngredient = () => {
-    const defaultWeight = language === 'ar' ? "حسب الحاجة" : "As needed";
+    const defaultWeight = asNeededText;
     setEditedIngredients([...editedIngredients, { nameAr: "", weight: defaultWeight, volume: defaultWeight }]);
   };
 
