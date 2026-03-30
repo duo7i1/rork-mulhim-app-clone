@@ -1069,12 +1069,12 @@ export const remoteFitnessRepo = {
       if (!existing) {
         const { error } = await supabase
           .from('user_streaks')
-          .insert({
+          .upsert({
             user_id: userId,
             last_open_date: todayStr,
             current_streak: 1,
             longest_streak: 1,
-          });
+          }, { onConflict: 'user_id' });
 
         if (error) {
           console.error('[RemoteRepo] Error inserting streak:', error.message);
