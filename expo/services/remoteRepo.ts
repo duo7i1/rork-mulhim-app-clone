@@ -15,12 +15,24 @@ import type {
   WorkoutSession,
 } from '@/types/fitness';
 
+function withTimeout<T>(promise: Promise<T>, ms = 15000, label = 'operation'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      console.warn(`[RemoteRepo] Timeout after ${ms}ms for ${label}`);
+      reject(new Error('NETWORK_ERROR'));
+    }, ms);
+    promise
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
 async function retryFetch<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
   for (let i = 0; i <= retries; i++) {
     try {
-      return await fn();
+      return await withTimeout(fn(), 15000, `retry ${i}`);
     } catch (e: any) {
-      const isNetworkError = e?.message?.includes('Failed to fetch') || e?.name === 'TypeError';
+      const isNetworkError = e?.message?.includes('Failed to fetch') || e?.message === 'NETWORK_ERROR' || e?.name === 'TypeError';
       if (isNetworkError && i < retries) {
         console.log(`[RemoteRepo] Retry ${i + 1}/${retries} after network error`);
         await new Promise(r => setTimeout(r, delay * (i + 1)));

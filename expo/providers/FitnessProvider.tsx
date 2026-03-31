@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import createContextHook from "@nkzw/create-context-hook";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FitnessProfile,
   ProgressEntry,
@@ -16,6 +16,7 @@ import {
 } from "@/types/fitness";
 import { useAuth } from "@/providers/AuthProvider";
 import { remoteFitnessRepo } from "@/services/remoteRepo";
+import { supabase } from "@/services/supabase";
 import {
   calculateBMR,
   calculateTDEE,
@@ -106,9 +107,16 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
   const [streakData, setStreakData] = useState<{ currentStreak: number; longestStreak: number }>({ currentStreak: 0, longestStreak: 0 });
   const [weekPlanExpired, setWeekPlanExpired] = useState<boolean>(false);
   const [mealPlanExpired, setMealPlanExpired] = useState<boolean>(false);
+  const loadDataGenRef = useRef<number>(0);
+  const isLoadingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    void loadData();
+    const gen = ++loadDataGenRef.current;
+    console.log('[FitnessProvider] useEffect triggered, gen:', gen, 'user:', user?.id ?? 'null');
+    void loadData(gen);
+    return () => {
+      console.log('[FitnessProvider] Cleanup for gen:', gen);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -127,11 +135,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (gen?: number) => {
+    const currentGen = gen ?? loadDataGenRef.current;
+    if (isLoadingRef.current && gen !== undefined) {
+      console.log('[FitnessProvider] loadData already running, skipping gen:', currentGen);
+      return;
+    }
+    const isStale = () => currentGen !== loadDataGenRef.current;
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
       setLoadError(false);
-      console.log('[FitnessProvider] Boot sequence started');
+      console.log('[FitnessProvider] Boot sequence started, gen:', currentGen);
 
       console.log('[FitnessProvider] Step 1: Hydrating from local cache');
       const [profileData, progressData, logsData, nutritionData, mealPlanData, groceryData, favoriteExercisesData, favoriteMealsData, weekPlanData, nutritionPlanData] = await Promise.all([
@@ -228,13 +243,49 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
       if (!user) {
         setIsLoading(false);
+        isLoadingRef.current = false;
         setRemoteProfileChecked(true);
         setHasRemoteProfile(false);
         console.log('[FitnessProvider] No user logged in, using local cache only');
         return;
       }
 
-      console.log('[FitnessProvider] Step 1.5: Updating daily streak');
+      if (isStale()) {
+        console.log('[FitnessProvider] Stale gen after local cache, aborting:', currentGen);
+        isLoadingRef.current = false;
+        return;
+      }
+
+      console.log('[FitnessProvider] Step 1.5: Refreshing auth session before remote calls');
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          console.log('[FitnessProvider] No valid session, attempting refresh');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.warn('[FitnessProvider] Session refresh failed:', refreshError.message);
+          } else {
+            console.log('[FitnessProvider] Session refreshed successfully');
+          }
+        } else {
+          const expiresAt = sessionData.session.expires_at;
+          const now = Math.floor(Date.now() / 1000);
+          if (expiresAt && expiresAt - now < 60) {
+            console.log('[FitnessProvider] Token expiring soon, refreshing');
+            await supabase.auth.refreshSession();
+          }
+        }
+      } catch (sessionErr) {
+        console.warn('[FitnessProvider] Session check error:', sessionErr);
+      }
+
+      if (isStale()) {
+        console.log('[FitnessProvider] Stale gen after session refresh, aborting:', currentGen);
+        isLoadingRef.current = false;
+        return;
+      }
+
+      console.log('[FitnessProvider] Step 1.6: Updating daily streak');
       try {
         const streakResult = await remoteFitnessRepo.updateUserStreak(user.id);
         if (streakResult) {
@@ -247,6 +298,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
       setRemoteProfileChecked(false);
       setHasRemoteProfile(false);
+
+      if (isStale()) {
+        console.log('[FitnessProvider] Stale gen before Step 2, aborting:', currentGen);
+        isLoadingRef.current = false;
+        return;
+      }
 
       console.log('[FitnessProvider] Step 2: Refreshing from Supabase for user:', user.id);
       try {
@@ -266,6 +323,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
           safeFetch(() => remoteFitnessRepo.fetchFavoriteExercises(user.id), 'fetchFavoriteExercises', []),
           safeFetch(() => remoteFitnessRepo.fetchFavoriteMeals(user.id), 'fetchFavoriteMeals', []),
         ]);
+
+        if (isStale()) {
+          console.log('[FitnessProvider] Stale gen after parallel fetch, aborting:', currentGen);
+          isLoadingRef.current = false;
+          return;
+        }
 
         setRemoteProfileChecked(true);
         setHasRemoteProfile(!!remoteProfile);
@@ -460,12 +523,14 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         }
 
         console.log('[FitnessProvider] Step 2 complete: Remote sync successful');
+        isLoadingRef.current = false;
       } catch (fetchError: any) {
         setRemoteProfileChecked(true);
         setLoadError(true);
         const hasLocalProfile = !!profileData;
         setHasRemoteProfile(hasLocalProfile);
         setIsLoading(false);
+        isLoadingRef.current = false;
         if (fetchError?.message === 'NETWORK_ERROR') {
           console.warn('[FitnessProvider] Network error: Supabase unreachable, using cached data. hasLocalProfile:', hasLocalProfile);
         } else {
@@ -475,6 +540,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     } catch (error) {
       console.error("[FitnessProvider] Boot sequence error:", error);
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
   }, [user]);
 
