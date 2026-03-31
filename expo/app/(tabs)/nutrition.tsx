@@ -1107,7 +1107,7 @@ export default function NutritionScreen() {
       carbs: `🍚 ${t.nutrition.carbsCategory}`,
       vegetables_fruits: `🥗 ${t.nutrition.vegetablesCategory}`,
       dairy: `🥛 ${t.nutrition.dairyCategory}`,
-      spices: `🌶️ ${t.nutrition.otherCategory}`,
+      spices: `🌶️ ${t.nutrition.spicesCategory}`,
       other: `📦 ${t.nutrition.otherCategory}`,
     };
 
