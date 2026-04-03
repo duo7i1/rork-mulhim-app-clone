@@ -94,31 +94,33 @@ function handleSupabaseError(error: any, context: string): never {
 export const remoteFitnessRepo = {
 
   async upsertProfile(userId: string, profile: FitnessProfile) {
-    console.log('[RemoteRepo] Upserting profile for user:', userId);
+    console.log('[RemoteRepo] Upserting profile for user:', userId, 'name:', profile.name);
     try {
+      const payload = {
+        user_id: userId,
+        age: profile.age,
+        weight: profile.weight,
+        height: profile.height,
+        gender: profile.gender,
+        target_weight: profile.targetWeight ?? null,
+        fitness_level: profile.fitnessLevel,
+        goal: profile.goal,
+        training_location: profile.trainingLocation,
+        activity_level: profile.activityLevel,
+        available_days: profile.availableDays,
+        session_duration: profile.sessionDuration,
+        injuries: profile.injuries || null,
+        name: profile.name ?? null,
+      };
+      console.log('[RemoteRepo] Upsert payload name value:', JSON.stringify(payload.name));
       const { data, error } = await supabase
         .from('user_profiles')
-        .upsert({
-          user_id: userId,
-          age: profile.age,
-          weight: profile.weight,
-          height: profile.height,
-          gender: profile.gender,
-          target_weight: profile.targetWeight ?? null,
-          fitness_level: profile.fitnessLevel,
-          goal: profile.goal,
-          training_location: profile.trainingLocation,
-          activity_level: profile.activityLevel,
-          available_days: profile.availableDays,
-          session_duration: profile.sessionDuration,
-          injuries: profile.injuries || null,
-          name: profile.name || null,
-        }, { onConflict: 'user_id' })
+        .upsert(payload, { onConflict: 'user_id' })
         .select()
         .single();
 
       if (error) handleSupabaseError(error, 'Error upserting profile');
-      console.log('[RemoteRepo] Profile upserted successfully');
+      console.log('[RemoteRepo] Profile upserted successfully, returned name:', (data as any)?.name);
       return data;
     } catch (e) {
       return wrapNetworkError(e);

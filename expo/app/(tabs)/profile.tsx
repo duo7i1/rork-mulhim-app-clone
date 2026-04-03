@@ -464,6 +464,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
 
   const handleSave = async () => {
     setIsSaving(true);
+    console.log('[EditProfile] Saving with name:', JSON.stringify(formData.name));
     try {
       await saveProfile(formData as any);
       await clearWeekPlan();

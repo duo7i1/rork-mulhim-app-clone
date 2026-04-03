@@ -546,6 +546,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
 
   const saveProfile = useCallback(async (newProfile: FitnessProfile) => {
     try {
+      console.log('[FitnessProvider] saveProfile called with name:', JSON.stringify(newProfile.name));
       if (!newProfile.fitnessLevel) {
         if (newProfile.activityLevel === "none" || newProfile.activityLevel === "light") {
           newProfile.fitnessLevel = "beginner";
@@ -557,7 +558,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       }
 
       if (user) {
-        console.log('[FitnessProvider] Saving profile to Supabase for user:', user.id);
+        console.log('[FitnessProvider] Saving profile to Supabase for user:', user.id, 'with name:', JSON.stringify(newProfile.name));
         try {
           await remoteFitnessRepo.upsertProfile(user.id, newProfile);
         } catch (error: any) {
