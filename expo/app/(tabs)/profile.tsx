@@ -295,6 +295,11 @@ export default function ProfileScreen() {
               <ChevronRight size={20} color={Colors.textLight} />
             </TouchableOpacity>
             <View style={styles.divider} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://mulhim.notion.site/Mulhim-Support-Hub-307da58de13e80378e99cecbf73d5ed9')}>
+              <Text style={styles.menuText}>{t.profile.contactSupport}</Text>
+              <ChevronRight size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+            <View style={styles.divider} />
             <TouchableOpacity style={styles.menuItem} onPress={() => setShowLanguageModal(true)}>
               <Text style={styles.menuText}>{t.profile.changeLanguage}</Text>
               <View style={styles.languageValue}>
