@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   available_days INTEGER NOT NULL DEFAULT 3,
   session_duration INTEGER NOT NULL DEFAULT 60,
   injuries TEXT,
+  name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

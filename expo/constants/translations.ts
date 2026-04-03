@@ -90,6 +90,9 @@ export const translations = {
       injuriesPlaceholder: 'مثال: ألم في الركبة، مشاكل في الظهر',
       getStarted: 'ابدأ الآن',
       stepOf: 'من',
+      nameTitle: 'ما اسمك؟',
+      nameDesc: 'عرّفنا على نفسك حتى نخاطبك باسمك',
+      enterName: 'أدخل اسمك',
     },
     plan: {
       title: 'الخطة الأسبوعية',
@@ -588,6 +591,9 @@ export const translations = {
       injuriesPlaceholder: 'E.g., knee pain, lower back issues',
       getStarted: 'Get Started',
       stepOf: 'of',
+      nameTitle: "What's your name?",
+      nameDesc: 'Tell us your name so we can personalize your experience',
+      enterName: 'Enter your name',
     },
     plan: {
       title: 'Weekly Plan',

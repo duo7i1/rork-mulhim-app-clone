@@ -5,6 +5,7 @@ export type TrainingLocation = "gym" | "home" | "minimal_equipment";
 export type ActivityLevel = "none" | "light" | "moderate" | "high";
 
 export interface FitnessProfile {
+  name?: string;
   age: number;
   weight: number;
   height: number;

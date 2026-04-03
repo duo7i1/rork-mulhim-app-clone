@@ -112,6 +112,7 @@ export const remoteFitnessRepo = {
           available_days: profile.availableDays,
           session_duration: profile.sessionDuration,
           injuries: profile.injuries || null,
+          name: profile.name || null,
         }, { onConflict: 'user_id' })
         .select()
         .single();
@@ -156,6 +157,7 @@ export const remoteFitnessRepo = {
         sessionDuration: row.session_duration,
         injuries: row.injuries || '',
         targetWeight: row.target_weight ? Number(row.target_weight) : undefined,
+        name: row.name || '',
       };
     } catch (e) {
       return wrapNetworkError(e);

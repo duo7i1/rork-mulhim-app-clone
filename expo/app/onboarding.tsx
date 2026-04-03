@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ArrowRight, Target, Dumbbell, Home, AlertCircle, Calendar, Activity } from "lucide-react-native";
+import { ArrowRight, Target, Dumbbell, Home, AlertCircle, Calendar, Activity, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   View,
@@ -22,7 +22,7 @@ import {
   ActivityLevel,
 } from "@/types/fitness";
 
-type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -42,15 +42,16 @@ export default function OnboardingScreen() {
     availableDays: 3,
     sessionDuration: 60,
     injuries: "",
+    name: "",
   });
 
-  const totalSteps = 7;
+  const totalSteps = 8;
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
       setCurrentStep((currentStep + 1) as OnboardingStep);
     } else {
-      handleComplete();
+      void handleComplete();
     }
   };
 
@@ -68,7 +69,9 @@ export default function OnboardingScreen() {
       formData.gender &&
       formData.goal &&
       formData.trainingLocation &&
-      formData.activityLevel
+      formData.activityLevel &&
+      formData.name &&
+      formData.name.trim().length > 0
     ) {
       await saveProfile(formData as FitnessProfile);
       router.replace("/(tabs)/plan" as any);
@@ -96,6 +99,8 @@ export default function OnboardingScreen() {
         return formData.trainingLocation !== undefined;
       case 6:
         return true;
+      case 7:
+        return !!formData.name && formData.name.trim().length > 0;
       default:
         return false;
     }
@@ -450,6 +455,29 @@ export default function OnboardingScreen() {
                 }
               />
             </View>
+          </View>
+        );
+
+      case 7:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.iconContainer}>
+              <User size={48} color={Colors.primary} />
+            </View>
+            <Text style={styles.stepTitle}>{t.onboarding.nameTitle}</Text>
+            <Text style={styles.stepDescription}>
+              {t.onboarding.nameDesc}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder={t.onboarding.enterName}
+              placeholderTextColor={Colors.textLight}
+              value={formData.name || ""}
+              onChangeText={(text) =>
+                setFormData({ ...formData, name: text })
+              }
+              autoCapitalize="words"
+            />
           </View>
         );
 
