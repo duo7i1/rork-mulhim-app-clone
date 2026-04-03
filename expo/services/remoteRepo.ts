@@ -96,8 +96,7 @@ export const remoteFitnessRepo = {
   async upsertProfile(userId: string, profile: FitnessProfile) {
     console.log('[RemoteRepo] Upserting profile for user:', userId, 'name:', profile.name);
     try {
-      const payload = {
-        user_id: userId,
+      const updatePayload = {
         age: profile.age,
         weight: profile.weight,
         height: profile.height,
@@ -112,29 +111,56 @@ export const remoteFitnessRepo = {
         injuries: profile.injuries || null,
         name: profile.name ?? null,
       };
-      console.log('[RemoteRepo] Upsert payload name value:', JSON.stringify(payload.name));
-      const { data, error } = await supabase
+      console.log('[RemoteRepo] Save payload name value:', JSON.stringify(updatePayload.name));
+
+      const { data: existing } = await supabase
         .from('user_profiles')
-        .upsert(payload, { onConflict: 'user_id' })
-        .select()
-        .single();
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error) {
-        console.error('[RemoteRepo] Upsert error details:', JSON.stringify({ message: error.message, details: error.details, hint: error.hint, code: error.code }));
-        handleSupabaseError(error, 'Error upserting profile');
+      let data: any;
+      if (existing) {
+        console.log('[RemoteRepo] Profile exists, using UPDATE for user:', userId);
+        const { data: updateData, error: updateError } = await supabase
+          .from('user_profiles')
+          .update(updatePayload)
+          .eq('user_id', userId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('[RemoteRepo] Update error details:', JSON.stringify({ message: updateError.message, details: updateError.details, hint: updateError.hint, code: updateError.code }));
+          handleSupabaseError(updateError, 'Error updating profile');
+        }
+        data = updateData;
+        console.log('[RemoteRepo] Profile updated successfully, returned name:', data?.name);
+      } else {
+        console.log('[RemoteRepo] Profile does not exist, using INSERT for user:', userId);
+        const { data: insertData, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({ user_id: userId, ...updatePayload })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('[RemoteRepo] Insert error details:', JSON.stringify({ message: insertError.message, details: insertError.details, hint: insertError.hint, code: insertError.code }));
+          handleSupabaseError(insertError, 'Error inserting profile');
+        }
+        data = insertData;
+        console.log('[RemoteRepo] Profile inserted successfully, returned name:', data?.name);
       }
-      console.log('[RemoteRepo] Profile upserted successfully, returned name:', (data as any)?.name);
 
-      if (profile.name !== undefined && profile.name !== null) {
-        console.log('[RemoteRepo] Explicitly updating name to:', JSON.stringify(profile.name));
+      if (data && profile.name !== undefined && profile.name !== null && data.name !== profile.name) {
+        console.log('[RemoteRepo] Name mismatch after save, forcing update. Expected:', profile.name, 'Got:', data.name);
         const { error: nameError } = await supabase
           .from('user_profiles')
           .update({ name: profile.name })
           .eq('user_id', userId);
         if (nameError) {
-          console.error('[RemoteRepo] Name update error:', JSON.stringify({ message: nameError.message, details: nameError.details, hint: nameError.hint, code: nameError.code }));
+          console.error('[RemoteRepo] Name force-update error:', JSON.stringify({ message: nameError.message, details: nameError.details, hint: nameError.hint, code: nameError.code }));
         } else {
-          console.log('[RemoteRepo] Name updated successfully to:', profile.name);
+          console.log('[RemoteRepo] Name force-updated successfully to:', profile.name);
         }
       }
 

@@ -560,6 +560,18 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
       if (user) {
         console.log('[FitnessProvider] Saving profile to Supabase for user:', user.id, 'with name:', JSON.stringify(newProfile.name));
         try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            console.log('[FitnessProvider] No session before save, refreshing...');
+            await supabase.auth.refreshSession();
+          } else {
+            const expiresAt = sessionData.session.expires_at;
+            const now = Math.floor(Date.now() / 1000);
+            if (expiresAt && expiresAt - now < 300) {
+              console.log('[FitnessProvider] Token expiring soon before save, refreshing...');
+              await supabase.auth.refreshSession();
+            }
+          }
           await remoteFitnessRepo.upsertProfile(user.id, newProfile);
         } catch (error: any) {
           if (error?.message === 'NETWORK_ERROR') {
