@@ -89,7 +89,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <User size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.name}>{t.profile.title}</Text>
+          <Text style={styles.name}>{profile?.name || t.profile.title}</Text>
           <Text style={styles.email}>{profile?.gender === "male" ? t.onboarding.male : t.onboarding.female} · {profile?.age} {t.profile.yearsOld}</Text>
         </View>
 
