@@ -1290,10 +1290,10 @@ export default function NutritionScreen() {
         <View style={styles.tipsCard}>
           <Text style={styles.tipsTitle}>💡 {t.coach.tips}</Text>
           <Text style={styles.tipsText}>
-            • {t.common.loading}{"\n"}
-            • {t.nutrition.protein}{"\n"}
-            • {t.nutrition.vegetables} & {t.nutrition.fruits}{"\n"}
-            • {t.common.success}
+            {t.plan.nutritionTip1}{"\n"}
+            {t.plan.nutritionTip2}{"\n"}
+            {t.plan.nutritionTip3}{"\n"}
+            {t.plan.nutritionTip4}
           </Text>
         </View>
 

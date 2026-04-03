@@ -441,6 +441,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
   const { saveProfile, clearWeekPlan } = useFitness();
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
+    name: profile?.name || "",
     age: profile?.age || 0,
     weight: profile?.weight || 0,
     height: profile?.height || 0,
@@ -480,6 +481,19 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
         <View style={styles.editSection}>
           <Text style={styles.editSectionTitle}>{t.editProfile.basicInfo}</Text>
           
+          <View style={styles.editInputGroup}>
+            <Text style={styles.editLabel}>{t.editProfile.nameLabel}</Text>
+            <TextInput
+              style={styles.editInput}
+              placeholder={t.editProfile.namePlaceholder}
+              placeholderTextColor={Colors.textLight}
+              value={formData.name}
+              onChangeText={(text) =>
+                setFormData({ ...formData, name: text })
+              }
+            />
+          </View>
+
           <View style={styles.editInputGroup}>
             <Text style={styles.editLabel}>{t.editProfile.ageLabel}</Text>
             <TextInput
