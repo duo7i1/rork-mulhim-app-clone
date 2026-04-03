@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -289,7 +290,7 @@ export default function ProfileScreen() {
               <ChevronRight size={20} color={Colors.textLight} />
             </TouchableOpacity>
             <View style={styles.divider} />
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://mulhim.notion.site/Mulhim-Privacy-Policy-307da58de13e80f8912ff1b94c5e0178')}>
               <Text style={styles.menuText}>{t.profile.privacySecurity}</Text>
               <ChevronRight size={20} color={Colors.textLight} />
             </TouchableOpacity>
