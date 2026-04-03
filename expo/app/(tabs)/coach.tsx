@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
@@ -376,7 +378,7 @@ export default function CoachScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAvoidingView 
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View style={styles.header}>
@@ -398,6 +400,7 @@ export default function CoachScreen() {
         </View>
         
         {messages.length === 0 && (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.welcomeContainer}>
             <View style={styles.welcomeIcon}>
               <Bot size={48} color={Colors.primary} />
@@ -414,6 +417,7 @@ export default function CoachScreen() {
             </View>
             <Text style={styles.welcomePrompt}>{t.coach.tryButtons}</Text>
           </View>
+          </TouchableWithoutFeedback>
         )}
 
         <ScrollView 
@@ -421,6 +425,8 @@ export default function CoachScreen() {
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
         >
           {messages.map((message, msgIndex) => (
             <View key={message.id || `msg-${msgIndex}`} style={styles.messageWrapper}>
