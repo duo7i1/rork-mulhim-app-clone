@@ -438,7 +438,7 @@ interface EditProfileModalProps {
 }
 
 function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
-  const { saveProfile, updateWeekPlan } = useFitness();
+  const { saveProfile, clearWeekPlan } = useFitness();
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
     age: profile?.age || 0,
@@ -459,7 +459,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
     setIsSaving(true);
     try {
       await saveProfile(formData as any);
-      void updateWeekPlan(null as any);
+      await clearWeekPlan();
       onClose();
     } catch (error) {
       console.error("Error saving profile:", error);

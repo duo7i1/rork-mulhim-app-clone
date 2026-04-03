@@ -636,6 +636,12 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     }
   }, [user, workoutLogs]);
 
+  const clearWeekPlan = useCallback(async () => {
+    console.log('[FitnessProvider] Clearing week plan to trigger regeneration');
+    setCurrentWeekPlan(null);
+    await AsyncStorage.removeItem(WEEK_PLAN_KEY);
+  }, []);
+
   const updateWeekPlan = useCallback(async (plan: WeeklyPlan) => {
     const normalizedPlan = normalizeWeeklyPlan(plan);
     if (!normalizedPlan) {
@@ -1171,6 +1177,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     addFavoriteMeal,
     removeFavoriteMeal,
     updateMealInPlan,
+    clearWeekPlan,
     calculateBMR: calcBMR,
     calculateTDEE: calcTDEE,
     getTargetCalories: calcTargetCalories,
@@ -1217,6 +1224,7 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
     addFavoriteMeal,
     removeFavoriteMeal,
     updateMealInPlan,
+    clearWeekPlan,
     calcBMR,
     calcTDEE,
     calcTargetCalories,
