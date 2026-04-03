@@ -258,7 +258,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.activityList}>
-              {workoutLogs.slice(-5).reverse().map((log) => (
+              {workoutLogs.slice(-3).reverse().map((log) => (
                 <View key={log.id} style={styles.activityCard}>
                   <View style={styles.activityIcon}>
                     <Activity size={20} color={Colors.primary} />
@@ -385,12 +385,6 @@ export default function ProfileScreen() {
                   <Text style={styles.checkIconText}>✓</Text>
                 </View>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.weightModalButtonCancel}
-              onPress={() => setShowLanguageModal(false)}
-            >
-              <Text style={styles.weightModalButtonTextCancel}>{t.common.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -576,11 +576,28 @@ export const [FitnessProvider, useFitness] = createContextHook(() => {
         setHasRemoteProfile(true);
         console.log('[FitnessProvider] Profile saved, hasRemoteProfile = true');
       }
+
+      if (nutritionAssessment?.completed) {
+        console.log('[FitnessProvider] Profile changed, regenerating nutrition plan');
+        const currentWt = progress.length > 0
+          ? [...progress].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].weight
+          : (newProfile.weight || 0);
+        const newTargetCalories = getTargetCalories(newProfile, currentWt);
+        const plan = generateNutritionPlanLogic(newProfile, nutritionAssessment, newTargetCalories);
+        setNutritionPlan(plan);
+        await AsyncStorage.setItem(NUTRITION_PLAN_KEY, JSON.stringify(plan));
+
+        if (user) {
+          remoteFitnessRepo.saveNutritionPlan(user.id, plan).catch((err) => {
+            console.warn('[FitnessProvider] Error syncing regenerated nutrition plan:', err);
+          });
+        }
+      }
     } catch (error) {
       console.error("Error saving profile:", error);
       throw error;
     }
-  }, [user]);
+  }, [user, nutritionAssessment, progress]);
 
   const addProgressEntry = useCallback(async (entry: ProgressEntry) => {
     try {
