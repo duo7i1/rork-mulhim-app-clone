@@ -119,8 +119,25 @@ export const remoteFitnessRepo = {
         .select()
         .single();
 
-      if (error) handleSupabaseError(error, 'Error upserting profile');
+      if (error) {
+        console.error('[RemoteRepo] Upsert error details:', JSON.stringify({ message: error.message, details: error.details, hint: error.hint, code: error.code }));
+        handleSupabaseError(error, 'Error upserting profile');
+      }
       console.log('[RemoteRepo] Profile upserted successfully, returned name:', (data as any)?.name);
+
+      if (profile.name !== undefined && profile.name !== null) {
+        console.log('[RemoteRepo] Explicitly updating name to:', JSON.stringify(profile.name));
+        const { error: nameError } = await supabase
+          .from('user_profiles')
+          .update({ name: profile.name })
+          .eq('user_id', userId);
+        if (nameError) {
+          console.error('[RemoteRepo] Name update error:', JSON.stringify({ message: nameError.message, details: nameError.details, hint: nameError.hint, code: nameError.code }));
+        } else {
+          console.log('[RemoteRepo] Name updated successfully to:', profile.name);
+        }
+      }
+
       return data;
     } catch (e) {
       return wrapNetworkError(e);
