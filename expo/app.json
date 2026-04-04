@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Mulhim",
-    "slug": "mulhim-app-clone",
+    "slug": "mulhim-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
