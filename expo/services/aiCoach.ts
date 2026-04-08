@@ -43,45 +43,53 @@ export interface AICoachRequestBody {
   language?: 'ar' | 'en';
 }
 
+const SUPABASE_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co';
+
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
 
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  let session = (await supabase.auth.getSession()).data.session;
 
-  if (!session || sessionError) {
+  if (!session) {
     console.warn('[AICoach] No valid session, attempting refresh...');
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError || !refreshData.session) {
       console.error('[AICoach] Session refresh failed:', refreshError?.message);
       throw new Error('Authentication required. Please log in again.');
     }
+    session = refreshData.session;
   }
 
-  const { data, error } = await supabase.functions.invoke('ai-coach', {
-    body,
+  const url = `${SUPABASE_URL}/functions/v1/ai-coach`;
+  console.log('[AICoach] Calling edge function via fetch:', url);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': session.access_token,
+    },
+    body: JSON.stringify(body),
   });
 
-  if (error) {
-    console.error('[AICoach] Edge function error:', error.message);
-    console.error('[AICoach] Error details:', JSON.stringify(error, null, 2));
-    console.error('[AICoach] Response data alongside error:', JSON.stringify(data, null, 2));
-    if (data) {
-      try {
-        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-        if (parsed?.content !== undefined || parsed?.toolCalls !== undefined) {
-          console.log('[AICoach] Data is actually valid, using it despite error flag');
-          const result: AICoachResponse = parsed;
-          console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
-          return result;
-        }
-      } catch (parseErr) {
-        console.error('[AICoach] Could not parse data:', parseErr);
-      }
+  const responseText = await response.text();
+  console.log('[AICoach] Response status:', response.status);
+  console.log('[AICoach] Response body:', responseText.substring(0, 500));
+
+  if (!response.ok) {
+    let errorDetail = responseText;
+    try {
+      const errorJson = JSON.parse(responseText);
+      errorDetail = errorJson.error || errorJson.message || responseText;
+    } catch (_e) {
+      // keep raw text
     }
-    throw new Error(`AI Coach error: ${error.message}`);
+    console.error('[AICoach] Edge function error:', response.status, errorDetail);
+    throw new Error(`AI Coach error (${response.status}): ${errorDetail}`);
   }
 
-  const result: AICoachResponse = data;
+  const result: AICoachResponse = JSON.parse(responseText);
   console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
   return result;
 }
