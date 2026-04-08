@@ -43,39 +43,32 @@ export interface AICoachRequestBody {
   language?: 'ar' | 'en';
 }
 
-const EDGE_FUNCTION_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co/functions/v1/ai-coach';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2xnemtnbHlybXpkYnNjcWJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDUxMTUsImV4cCI6MjA4NTI4MTExNX0.c078nkR2_TJ9b9oPfukp-tI7pXQrosdGPMWJXqeN8Nc';
-
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
-  console.log('[AICoach] Calling edge function via fetch with anon key (JWT verification disabled)');
+  console.log('[AICoach] Calling edge function via supabase.functions.invoke');
 
-  const response = await fetch(EDGE_FUNCTION_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ANON_KEY}`,
-      'apikey': ANON_KEY,
-    },
-    body: JSON.stringify(body),
+  const { data, error } = await supabase.functions.invoke('ai-coach', {
+    body: body,
   });
 
-  const responseText = await response.text();
-  console.log('[AICoach] Response status:', response.status, 'body preview:', responseText.substring(0, 500));
-
-  if (!response.ok) {
-    console.error('[AICoach] Edge function error:', response.status, responseText);
-    throw new Error(`AI Coach error (${response.status}): ${responseText}`);
+  if (error) {
+    console.error('[AICoach] Edge function error:', error.message);
+    throw new Error(`AI Coach error: ${error.message}`);
   }
 
-  let data: AICoachResponse;
-  try {
-    data = JSON.parse(responseText) as AICoachResponse;
-  } catch (parseErr) {
-    console.error('[AICoach] Failed to parse response JSON:', parseErr);
+  console.log('[AICoach] Raw response:', JSON.stringify(data).substring(0, 500));
+
+  const result = data as AICoachResponse;
+
+  if (!result || (!result.content && !result.toolCalls)) {
+    console.error('[AICoach] Unexpected response format:', data);
     throw new Error('AI Coach returned invalid response');
   }
 
-  console.log('[AICoach] Content:', data.content?.substring(0, 80), 'toolCalls:', data.toolCalls?.length, 'finishReason:', data.finishReason);
-  return data;
+  if (!result.toolCalls) {
+    result.toolCalls = [];
+  }
+
+  console.log('[AICoach] Content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
+  return result;
 }
