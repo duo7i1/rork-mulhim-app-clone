@@ -1,7 +1,5 @@
 import { supabase } from './supabase';
 
-const EDGE_FUNCTION_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co/functions/v1/ai-coach';
-
 export interface AIMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -48,35 +46,27 @@ export interface AICoachRequestBody {
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-  if (!accessToken) {
-    console.warn('[AICoach] No access token available, attempting without auth');
+  if (!session || sessionError) {
+    console.warn('[AICoach] No valid session, attempting refresh...');
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !refreshData.session) {
+      console.error('[AICoach] Session refresh failed:', refreshError?.message);
+      throw new Error('Authentication required. Please log in again.');
+    }
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2xnemtnbHlybXpkYnNjcWJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDUxMTUsImV4cCI6MjA4NTI4MTExNX0.c078nkR2_TJ9b9oPfukp-tI7pXQrosdGPMWJXqeN8Nc',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(EDGE_FUNCTION_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
+  const { data, error } = await supabase.functions.invoke('ai-coach', {
+    body,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[AICoach] Edge function error:', response.status, errorText);
-    throw new Error(`AI Coach error: ${response.status}`);
+  if (error) {
+    console.error('[AICoach] Edge function error:', error.message);
+    throw new Error(`AI Coach error: ${error.message}`);
   }
 
-  const result: AICoachResponse = await response.json();
+  const result: AICoachResponse = data;
   console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls.length, 'finishReason:', result.finishReason);
   return result;
 }
