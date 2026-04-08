@@ -51,10 +51,15 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
 
   let session = (await supabase.auth.getSession()).data.session;
 
-  const isExpired = session?.expires_at ? (session.expires_at * 1000) < Date.now() : true;
+  if (!session) {
+    console.warn('[AICoach] No session found, cannot call AI Coach');
+    throw new Error('Authentication required. Please log in again.');
+  }
 
-  if (!session || isExpired) {
-    console.warn('[AICoach] No valid session or token expired, refreshing...');
+  const { data: userData, error: userError } = await supabase.auth.getUser(session.access_token);
+
+  if (userError || !userData.user) {
+    console.warn('[AICoach] Token invalid, refreshing session...', userError?.message);
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError || !refreshData.session) {
       console.error('[AICoach] Session refresh failed:', refreshError?.message);
@@ -63,6 +68,8 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
     session = refreshData.session;
     console.log('[AICoach] Session refreshed, new expiry:', new Date(session.expires_at! * 1000).toISOString());
   }
+
+  console.log('[AICoach] Using access_token (first 20 chars):', session.access_token.substring(0, 20));
 
   const url = `${SUPABASE_URL}/functions/v1/ai-coach`;
   console.log('[AICoach] Calling edge function via fetch:', url);
