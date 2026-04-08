@@ -43,64 +43,34 @@ export interface AICoachRequestBody {
   language?: 'ar' | 'en';
 }
 
-const SUPABASE_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2xnemtnbHlybXpkYnNjcWJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDUxMTUsImV4cCI6MjA4NTI4MTExNX0.c078nkR2_TJ9b9oPfukp-tI7pXQrosdGPMWJXqeN8Nc';
-
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
 
-  let session = (await supabase.auth.getSession()).data.session;
-
-  if (!session) {
-    console.warn('[AICoach] No session found, cannot call AI Coach');
-    throw new Error('Authentication required. Please log in again.');
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser(session.access_token);
-
-  if (userError || !userData.user) {
-    console.warn('[AICoach] Token invalid, refreshing session...', userError?.message);
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.warn('[AICoach] No session found, trying refresh...');
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError || !refreshData.session) {
       console.error('[AICoach] Session refresh failed:', refreshError?.message);
       throw new Error('Authentication required. Please log in again.');
     }
-    session = refreshData.session;
-    console.log('[AICoach] Session refreshed, new expiry:', new Date(session.expires_at! * 1000).toISOString());
+    console.log('[AICoach] Session refreshed successfully');
   }
 
-  console.log('[AICoach] Using access_token (first 20 chars):', session.access_token.substring(0, 20));
+  console.log('[AICoach] Calling edge function via supabase.functions.invoke');
 
-  const url = `${SUPABASE_URL}/functions/v1/ai-coach`;
-  console.log('[AICoach] Calling edge function via fetch:', url);
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
+  const { data, error } = await supabase.functions.invoke('ai-coach', {
+    body: body,
   });
 
-  const responseText = await response.text();
-  console.log('[AICoach] Response status:', response.status);
-  console.log('[AICoach] Response body:', responseText.substring(0, 500));
-
-  if (!response.ok) {
-    let errorDetail = responseText;
-    try {
-      const errorJson = JSON.parse(responseText);
-      errorDetail = errorJson.error || errorJson.message || responseText;
-    } catch (_e) {
-      // keep raw text
-    }
-    console.error('[AICoach] Edge function error:', response.status, errorDetail);
-    throw new Error(`AI Coach error (${response.status}): ${errorDetail}`);
+  if (error) {
+    console.error('[AICoach] Edge function error:', error.message, error);
+    throw new Error(`AI Coach error: ${error.message}`);
   }
 
-  const result: AICoachResponse = JSON.parse(responseText);
-  console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
+  console.log('[AICoach] Response received, data:', JSON.stringify(data).substring(0, 500));
+
+  const result = data as AICoachResponse;
+  console.log('[AICoach] Content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
   return result;
 }
