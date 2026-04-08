@@ -63,10 +63,25 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
 
   if (error) {
     console.error('[AICoach] Edge function error:', error.message);
+    console.error('[AICoach] Error details:', JSON.stringify(error, null, 2));
+    console.error('[AICoach] Response data alongside error:', JSON.stringify(data, null, 2));
+    if (data) {
+      try {
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        if (parsed?.content !== undefined || parsed?.toolCalls !== undefined) {
+          console.log('[AICoach] Data is actually valid, using it despite error flag');
+          const result: AICoachResponse = parsed;
+          console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
+          return result;
+        }
+      } catch (parseErr) {
+        console.error('[AICoach] Could not parse data:', parseErr);
+      }
+    }
     throw new Error(`AI Coach error: ${error.message}`);
   }
 
   const result: AICoachResponse = data;
-  console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls.length, 'finishReason:', result.finishReason);
+  console.log('[AICoach] Response received, content:', result.content?.substring(0, 80), 'toolCalls:', result.toolCalls?.length, 'finishReason:', result.finishReason);
   return result;
 }
