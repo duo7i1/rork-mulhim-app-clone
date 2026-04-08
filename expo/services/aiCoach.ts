@@ -51,14 +51,17 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
 
   let session = (await supabase.auth.getSession()).data.session;
 
-  if (!session) {
-    console.warn('[AICoach] No valid session, attempting refresh...');
+  const isExpired = session?.expires_at ? (session.expires_at * 1000) < Date.now() : true;
+
+  if (!session || isExpired) {
+    console.warn('[AICoach] No valid session or token expired, refreshing...');
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError || !refreshData.session) {
       console.error('[AICoach] Session refresh failed:', refreshError?.message);
       throw new Error('Authentication required. Please log in again.');
     }
     session = refreshData.session;
+    console.log('[AICoach] Session refreshed, new expiry:', new Date(session.expires_at! * 1000).toISOString());
   }
 
   const url = `${SUPABASE_URL}/functions/v1/ai-coach`;
