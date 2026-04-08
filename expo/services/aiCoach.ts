@@ -44,6 +44,7 @@ export interface AICoachRequestBody {
 }
 
 const SUPABASE_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2xnemtnbHlybXpkYnNjcWJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDUxMTUsImV4cCI6MjA4NTI4MTExNX0.c078nkR2_TJ9b9oPfukp-tI7pXQrosdGPMWJXqeN8Nc';
 
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
@@ -68,7 +69,7 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
-      'apikey': session.access_token,
+      'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
   });
