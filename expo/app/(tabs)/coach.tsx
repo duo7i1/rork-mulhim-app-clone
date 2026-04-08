@@ -1,5 +1,5 @@
 import { Sparkles, Send, Bot, User, Save } from "lucide-react-native";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -20,12 +20,19 @@ import Colors from "@/constants/colors";
 import { useFitness } from "@/providers/FitnessProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { useRorkAgent, createRorkTool } from "@rork-ai/toolkit-sdk";
 import { remoteFitnessRepo } from "@/services/remoteRepo";
-import { z } from "zod";
+import { sendAICoachMessage, AIToolCall } from "@/services/aiCoach";
 
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: AIToolCall[];
+  toolResults?: string[];
+}
 
 export default function CoachScreen() {
+  console.log("[CoachScreen] Rendering");
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { 
@@ -34,16 +41,19 @@ export default function CoachScreen() {
     currentWeekPlan,
     updateWeekPlan,
     currentMealPlan,
+    nutritionPlan,
     addMealToDay,
     addFavoriteExercise,
     addFavoriteMeal,
   } = useFitness();
   
   const [input, setInput] = useState<string>("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [lastSuggestedWorkout, setLastSuggestedWorkout] = useState<any>(null);
   const [lastSuggestedMeal, setLastSuggestedMeal] = useState<any>(null);
-  const lastSavedPairIndex = useRef<number>(0);
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveModalType, setSaveModalType] = useState<"workout" | "meal" | null>(null);
   const [selectedData, setSelectedData] = useState<any>(null);
@@ -52,134 +62,227 @@ export default function CoachScreen() {
   const [saveToFavorites, setSaveToFavorites] = useState<boolean>(false);
   const [selectedWorkoutDays, setSelectedWorkoutDays] = useState<string[]>([]);
   const [saveWorkoutToFavorites, setSaveWorkoutToFavorites] = useState<boolean>(false);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  
-  const { messages, error, sendMessage, status } = useRorkAgent({
-    tools: {
-      suggestWorkout: createRorkTool({
-        description: language === 'ar' ? "اقترح تمرين أو عدل خطة التمرين الحالية بناءً على هدف المستخدم ومستواه" : "Suggest a workout or modify the current workout plan based on the user's goal and level",
-        zodSchema: z.object({
-          muscleGroup: z.string().describe(language === 'ar' ? "المجموعة العضلية المستهدفة (chest, back, legs, shoulders, arms, core)" : "Target muscle group (chest, back, legs, shoulders, arms, core)"),
-          exercises: z.array(z.object({
-            name: z.string().describe(language === 'ar' ? "اسم التمرين" : "Exercise name"),
-            sets: z.number().describe(language === 'ar' ? "عدد المجموعات" : "Number of sets"),
-            reps: z.string().describe(language === 'ar' ? "عدد التكرارات أو الوقت" : "Number of reps or time"),
-            rest: z.number().describe(language === 'ar' ? "فترة الراحة بالثواني" : "Rest period in seconds"),
-          })).describe(language === 'ar' ? "قائمة التمارين المقترحة" : "List of suggested exercises"),
-          reason: z.string().describe(language === 'ar' ? "سبب اختيار هذه التمارين" : "Reason for choosing these exercises"),
-        }),
-        execute: (input) => {
-          console.log("[AI Coach] Suggested workout:", input);
-          setLastSuggestedWorkout(input);
-          return language === 'ar' ? `تم اقتراح ${input.exercises.length} تمارين لـ ${input.muscleGroup}` : `Suggested ${input.exercises.length} exercises for ${input.muscleGroup}`;
-        },
-      }),
-      
-      suggestMeal: createRorkTool({
-        description: language === 'ar' ? "اقترح وجبة سعودية تقليدية بناءً على السعرات والبروتين المطلوب" : "Suggest a traditional Saudi meal based on required calories and protein",
-        zodSchema: z.object({
-          mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]).describe(language === 'ar' ? "نوع الوجبة" : "Meal type"),
-          mealName: z.string().describe(language === 'ar' ? "اسم الوجبة بالعربي" : "Meal name in Arabic"),
-          calories: z.number().describe(language === 'ar' ? "السعرات الحرارية التقريبية" : "Approximate calories"),
-          protein: z.number().describe(language === 'ar' ? "البروتين بالجرام" : "Protein in grams"),
-          ingredients: z.array(z.string()).describe(language === 'ar' ? "المكونات الرئيسية" : "Main ingredients"),
-          cookingTips: z.string().describe(language === 'ar' ? "نصائح التحضير" : "Cooking tips"),
-        }),
-        execute: (input) => {
-          console.log("[AI Coach] Suggested meal:", input);
-          setLastSuggestedMeal(input);
-          return language === 'ar' ? `تم اقتراح وجبة ${input.mealName}` : `Suggested meal ${input.mealName}`;
-        },
-      }),
-      
-      trackProgress: createRorkTool({
-        description: language === 'ar' ? "سجل أو حلل تقدم المستخدم في الوزن والقياسات" : "Track or analyze user's progress in weight and measurements",
-        zodSchema: z.object({
-          metric: z.string().describe(language === 'ar' ? "المقياس (وزن، قياسات، قوة)" : "Metric (weight, measurements, strength)"),
-          value: z.number().describe(language === 'ar' ? "القيمة" : "Value"),
-          trend: z.enum(["improving", "stable", "declining"]).describe(language === 'ar' ? "الاتجاه" : "Trend"),
-          recommendation: z.string().describe(language === 'ar' ? "التوصية بناءً على التقدم" : "Recommendation based on progress"),
-        }),
-        execute: (input) => {
-          console.log("[AI Coach] Progress tracked:", input);
-          return language === 'ar' ? `تم تحليل ${input.metric}: ${input.trend}` : `Analyzed ${input.metric}: ${input.trend}`;
-        },
-      }),
-      
-      adjustPlan: createRorkTool({
-        description: language === 'ar' ? "عدل الخطة بناءً على التقدم أو الظروف الجديدة" : "Adjust the plan based on progress or new circumstances",
-        zodSchema: z.object({
-          planType: z.enum(["workout", "nutrition", "both"]).describe(language === 'ar' ? "نوع الخطة للتعديل" : "Plan type to adjust"),
-          changes: z.array(z.string()).describe(language === 'ar' ? "التغييرات المقترحة" : "Suggested changes"),
-          reason: z.string().describe(language === 'ar' ? "سبب التعديل" : "Reason for adjustment"),
-        }),
-        execute: (input) => {
-          console.log("[AI Coach] Plan adjusted:", input);
-          return language === 'ar' ? `تم تعديل خطة ${input.planType}` : `Adjusted ${input.planType} plan`;
-        },
-      }),
-    },
-  });
-  
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [messages]);
 
-  useEffect(() => {
-    if (status === 'ready' || status === 'error') {
-      setIsGenerating(false);
-    }
-  }, [status]);
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
 
-  const prevStatus = useRef<string>(status);
-  useEffect(() => {
-    if (prevStatus.current !== 'ready' && status === 'ready' && user?.id && messages.length >= 2) {
-      for (let i = lastSavedPairIndex.current; i < messages.length - 1; i += 2) {
-        const userMsg = messages[i];
-        const assistantMsg = messages[i + 1];
-        if (!userMsg || !assistantMsg) break;
-        if (userMsg.role !== 'user' || assistantMsg.role !== 'assistant') continue;
-
-        const inputText = userMsg.parts
-          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-          .trim();
-
-        const outputText = assistantMsg.parts
-          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-          .trim();
-
-        if (inputText && outputText) {
-          console.log('[Coach] Saving chat pair to Supabase - input:', inputText.substring(0, 50), 'output length:', outputText.length);
-          void remoteFitnessRepo.saveChatMessage(user.id, inputText, outputText, inputText.substring(0, 100));
-        }
-        lastSavedPairIndex.current = i + 2;
+  const processToolCalls = useCallback((toolCalls: AIToolCall[]) => {
+    const results: string[] = [];
+    for (const tc of toolCalls) {
+      console.log('[CoachScreen] Processing tool call:', tc.name, tc.arguments);
+      if (tc.name === 'suggestWorkout') {
+        setLastSuggestedWorkout(tc.arguments);
+        const exercises = tc.arguments.exercises as any[];
+        const muscleGroup = tc.arguments.muscleGroup as string;
+        results.push(
+          language === 'ar'
+            ? `✓ تم اقتراح ${exercises?.length || 0} تمارين لـ ${muscleGroup}`
+            : `✓ Suggested ${exercises?.length || 0} exercises for ${muscleGroup}`
+        );
+      } else if (tc.name === 'suggestMeal') {
+        setLastSuggestedMeal(tc.arguments);
+        const mealName = tc.arguments.mealName as string;
+        results.push(
+          language === 'ar'
+            ? `✓ تم اقتراح وجبة ${mealName}`
+            : `✓ Suggested meal ${mealName}`
+        );
+      } else if (tc.name === 'trackProgress') {
+        const metric = tc.arguments.metric as string;
+        const trend = tc.arguments.trend as string;
+        results.push(
+          language === 'ar'
+            ? `✓ تم تحليل ${metric}: ${trend}`
+            : `✓ Analyzed ${metric}: ${trend}`
+        );
+      } else if (tc.name === 'adjustPlan') {
+        const planType = tc.arguments.planType as string;
+        results.push(
+          language === 'ar'
+            ? `✓ تم تعديل خطة ${planType}`
+            : `✓ Adjusted ${planType} plan`
+        );
       }
     }
-    prevStatus.current = status;
-  }, [status, user?.id, messages]);
-  
-  const handleSend = () => {
-    if (input.trim() && !isGenerating) {
-      setIsGenerating(true);
-      sendMessage(input.trim());
-      setInput("");
-    }
-  };
+    return results;
+  }, [language]);
 
-  const handleQuickAction = (message: string) => {
-    if (!isGenerating) {
-      setIsGenerating(true);
-      sendMessage(message);
+  const buildRequestContext = useCallback(() => {
+    const context: Record<string, unknown> = {};
+
+    if (profile) {
+      context.profile = {
+        name: profile.name,
+        age: profile.age,
+        weight: profile.weight,
+        height: profile.height,
+        gender: profile.gender,
+        goal: profile.goal,
+        fitnessLevel: profile.fitnessLevel,
+        trainingLocation: profile.trainingLocation,
+        activityLevel: profile.activityLevel,
+        availableDays: profile.availableDays,
+        sessionDuration: profile.sessionDuration,
+        injuries: profile.injuries,
+        targetWeight: profile.targetWeight,
+      };
     }
-  };
+
+    if (nutritionPlan) {
+      context.nutrition = {
+        targetCalories: nutritionPlan.targetCalories,
+        proteinTarget: nutritionPlan.macros.protein,
+      };
+    }
+
+    if (currentWeekPlan && currentWeekPlan.sessions.length > 0) {
+      context.currentWorkoutPlan = {
+        sessions: currentWeekPlan.sessions.map(s => ({
+          day: s.day,
+          name: s.name,
+          exerciseCount: s.exercises.length,
+        })),
+      };
+    }
+
+    if (currentMealPlan && currentMealPlan.days.length > 0) {
+      context.currentMealPlan = {
+        days: currentMealPlan.days.map(d => ({
+          day: d.day,
+          totalCalories: d.totalCalories,
+          totalProtein: d.totalProtein,
+          hasMeals: !!(d.breakfast || d.lunch || d.dinner || d.snacks.length > 0),
+        })),
+      };
+    }
+
+    const streak = getCurrentStreak();
+    if (streak > 0) {
+      context.streak = streak;
+    }
+
+    context.language = language || 'ar';
+
+    return context;
+  }, [profile, nutritionPlan, currentWeekPlan, currentMealPlan, getCurrentStreak, language]);
+
+  const sendMessageToAI = useCallback(async (userText: string) => {
+    setError(null);
+    setIsGenerating(true);
+
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}-user`,
+      role: 'user',
+      content: userText,
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    scrollToBottom();
+
+    try {
+      const conversationHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+      conversationHistory.push({ role: 'user', content: userText });
+
+      const context = buildRequestContext();
+
+      const response = await sendAICoachMessage({
+        messages: conversationHistory,
+        ...context,
+      } as any);
+
+      let assistantContent = response.content || '';
+      let toolResults: string[] = [];
+
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        toolResults = processToolCalls(response.toolCalls);
+        if (!assistantContent && toolResults.length > 0) {
+          const toolArgs = response.toolCalls[0]?.arguments;
+          if (toolArgs) {
+            if (response.toolCalls[0].name === 'suggestWorkout') {
+              const reason = toolArgs.reason as string;
+              const exercises = toolArgs.exercises as any[];
+              const exercisesList = exercises?.map((ex: any) =>
+                `• ${ex.name}: ${ex.sets} × ${ex.reps} (${language === 'ar' ? 'راحة' : 'rest'} ${ex.rest}${language === 'ar' ? 'ث' : 's'})`
+              ).join('\n') || '';
+              assistantContent = `${reason || ''}\n\n${exercisesList}`;
+            } else if (response.toolCalls[0].name === 'suggestMeal') {
+              const mealName = toolArgs.mealName as string;
+              const calories = toolArgs.calories as number;
+              const protein = toolArgs.protein as number;
+              const ingredients = toolArgs.ingredients as string[];
+              const cookingTips = toolArgs.cookingTips as string;
+              const ingredientsList = ingredients?.map((ing: string) => `• ${ing}`).join('\n') || '';
+              assistantContent = `🍽 ${mealName}\n\n${language === 'ar' ? 'السعرات' : 'Calories'}: ${calories} | ${language === 'ar' ? 'البروتين' : 'Protein'}: ${protein}g\n\n${language === 'ar' ? 'المكونات' : 'Ingredients'}:\n${ingredientsList}\n\n${language === 'ar' ? 'نصائح' : 'Tips'}: ${cookingTips}`;
+            } else if (response.toolCalls[0].name === 'trackProgress') {
+              const recommendation = toolArgs.recommendation as string;
+              assistantContent = recommendation || toolResults.join('\n');
+            } else if (response.toolCalls[0].name === 'adjustPlan') {
+              const changes = toolArgs.changes as string[];
+              const reason = toolArgs.reason as string;
+              const changesList = changes?.map((c: string) => `• ${c}`).join('\n') || '';
+              assistantContent = `${reason || ''}\n\n${changesList}`;
+            }
+          }
+        }
+      }
+
+      if (!assistantContent) {
+        assistantContent = language === 'ar' ? 'تم!' : 'Done!';
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: `msg-${Date.now()}-assistant`,
+        role: 'assistant',
+        content: assistantContent.trim(),
+        toolCalls: response.toolCalls.length > 0 ? response.toolCalls : undefined,
+        toolResults: toolResults.length > 0 ? toolResults : undefined,
+      };
+
+      setMessages(prev => [...prev, assistantMsg]);
+      scrollToBottom();
+
+      if (user?.id) {
+        void remoteFitnessRepo.saveChatMessage(
+          user.id,
+          userText,
+          assistantContent.trim(),
+          userText.substring(0, 100)
+        );
+      }
+    } catch (err: any) {
+      console.error('[CoachScreen] AI error:', err);
+      setError(err?.message || 'Unknown error');
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}-error`,
+        role: 'assistant',
+        content: language === 'ar' ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.',
+      };
+      setMessages(prev => [...prev, errorMsg]);
+      scrollToBottom();
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [messages, buildRequestContext, processToolCalls, scrollToBottom, user?.id, language]);
+
+  const handleSend = useCallback(() => {
+    if (input.trim() && !isGenerating) {
+      const text = input.trim();
+      setInput("");
+      void sendMessageToAI(text);
+    }
+  }, [input, isGenerating, sendMessageToAI]);
+
+  const handleQuickAction = useCallback((message: string) => {
+    if (!isGenerating) {
+      void sendMessageToAI(message);
+    }
+  }, [isGenerating, sendMessageToAI]);
 
   const openSaveModal = (type: "workout" | "meal", data: any) => {
     setSaveModalType(type);
@@ -432,7 +535,7 @@ export default function CoachScreen() {
             <View key={message.id || `msg-${msgIndex}`} style={styles.messageWrapper}>
               {message.role === "user" ? (
                 <View style={styles.userMessage}>
-                  <Text style={styles.userMessageText}>{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</Text>
+                  <Text style={styles.userMessageText}>{message.content}</Text>
                   <View style={styles.userAvatar}>
                     <User size={16} color={Colors.background} />
                   </View>
@@ -443,38 +546,21 @@ export default function CoachScreen() {
                     <Bot size={16} color={Colors.primary} />
                   </View>
                   <View style={styles.assistantMessageContent}>
-                    {message.parts.map((part, index) => {
-                      if (part.type === 'text') {
-                        return (
-                          <View key={`text-${message.id || msgIndex}-${index}`}>
-                            <Text style={styles.assistantMessageText}>
-                              {part.text}
-                            </Text>
-                          </View>
-                        );
-                      }
-                      if (part.type === 'tool') {
-                        if (part.state === 'input-streaming' || part.state === 'input-available') {
-                          return (
-                            <View key={`tool-input-${message.id || msgIndex}-${index}`} style={styles.toolMessage}>
-                              <ActivityIndicator size="small" color={Colors.primary} />
-                              <Text style={styles.toolMessageText}>{t.coach.preparing}</Text>
-                            </View>
-                          );
-                        }
-                        if (part.state === 'output-available') {
-                          return (
-                            <View key={`tool-output-${message.id || msgIndex}-${index}`} style={styles.toolSuccess}>
-                              <Text style={styles.toolSuccessText}>✓ {typeof part.output === 'string' ? part.output : t.coach.toolSuccess}</Text>
-                            </View>
-                          );
-                        }
-                      }
-                      return null;
-                    })}
-                    {(() => {
-                      const hasWorkout = message.parts.some(part => part.type === 'tool' && part.toolName === 'suggestWorkout' && part.state === 'output-available');
-                      const hasMeal = message.parts.some(part => part.type === 'tool' && part.toolName === 'suggestMeal' && part.state === 'output-available');
+                    {message.toolResults && message.toolResults.length > 0 && (
+                      <View style={styles.toolSuccess}>
+                        {message.toolResults.map((result, i) => (
+                          <Text key={`tool-${i}`} style={styles.toolSuccessText}>{result}</Text>
+                        ))}
+                      </View>
+                    )}
+                    <View>
+                      <Text style={styles.assistantMessageText}>
+                        {message.content}
+                      </Text>
+                    </View>
+                    {message.toolCalls && message.toolCalls.length > 0 && (() => {
+                      const hasWorkout = message.toolCalls.some(tc => tc.name === 'suggestWorkout');
+                      const hasMeal = message.toolCalls.some(tc => tc.name === 'suggestMeal');
                       
                       if (hasWorkout || hasMeal) {
                         return (
@@ -501,9 +587,21 @@ export default function CoachScreen() {
             </View>
           ))}
           
-
+          {isGenerating && (
+            <View style={styles.messageWrapper}>
+              <View style={styles.assistantMessage}>
+                <View style={styles.assistantAvatar}>
+                  <Bot size={16} color={Colors.primary} />
+                </View>
+                <View style={styles.toolMessage}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                  <Text style={styles.toolMessageText}>{t.coach.preparing}</Text>
+                </View>
+              </View>
+            </View>
+          )}
           
-          {error && (
+          {error && !isGenerating && (
             <View style={styles.errorMessage}>
               <Text style={styles.errorText}>{t.coach.errorOccurred}</Text>
             </View>
@@ -715,8 +813,6 @@ export default function CoachScreen() {
                           </TouchableOpacity>
                         ))}
                       </View>
-
-
                     </View>
                   )}
                 </View>

@@ -15,6 +15,7 @@ import { useFitness } from "@/providers/FitnessProvider";
 import { useTranslation } from "@/providers/LanguageProvider";
 
 export default function WorkoutDetailsScreen() {
+  console.log("[WorkoutDetails] Rendering workout details");
   const router = useRouter();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { currentWeekPlan, toggleExerciseCompletion } = useFitness();

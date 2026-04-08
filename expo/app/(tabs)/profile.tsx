@@ -32,6 +32,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function ProfileScreen() {
+  console.log("[ProfileScreen] Rendering");
   const { t, setLanguage, language } = useLanguage();
   const { profile, getTargetCalories, calculateBMR, calculateTDEE, workoutLogs, getCurrentStreak, getLongestStreak, getCurrentWeight, addProgressEntry } = useFitness();
   const { signOut } = useAuth();

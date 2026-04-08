@@ -18,6 +18,7 @@ import { exerciseDatabase } from "@/data/exercises";
 import { useWorkoutPlanGenerator, filterExercisesByLocation } from "@/hooks/useWorkoutPlanGenerator";
 
 export default function PlanScreen() {
+  console.log("[PlanScreen] Rendering");
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { t, language } = useLanguage();
@@ -69,7 +70,7 @@ export default function PlanScreen() {
 
   if (!currentWeekPlan) {
     return (
-      <SafeAreaView style={styles.container} edges={["top"]}>
+      <SafeAreaView style={styles.container} edges={["top"]} testID="plan-screen">
         <View style={styles.loadingContainer}>
           <Dumbbell size={48} color={Colors.primary} />
           <Text style={styles.loadingText}>{t.plan.generatingPlan}</Text>
@@ -84,7 +85,7 @@ export default function PlanScreen() {
   const progressPercentage = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top"]} testID="plan-screen">
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerTop}>

@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function LoginScreen() {
+  console.log("[LoginScreen] Rendering login");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: "700",
+    fontWeight: "700" as const,
     color: Colors.text,
     marginBottom: 8,
   },
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: Colors.text,
   },
   input: {
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
   },
   footer: {
     flexDirection: "row",
@@ -189,6 +190,6 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     color: Colors.primary,
-    fontWeight: "600",
+    fontWeight: "600" as const,
   },
 });

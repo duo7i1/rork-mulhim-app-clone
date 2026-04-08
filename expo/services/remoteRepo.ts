@@ -78,6 +78,10 @@ function toPostgresArray(arr: string[]): string {
   return `{${escaped.join(',')}}`;
 }
 
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 function handleSupabaseError(error: any, context: string): never {
   console.error(`[RemoteRepo] ${context}:`, JSON.stringify({
     message: error.message,
@@ -254,25 +258,28 @@ export const remoteFitnessRepo = {
   },
 
   async insertWorkoutLog(userId: string, log: WorkoutLog) {
-    console.log('[RemoteRepo] Inserting workout log for user:', userId, 'sessionId:', log.sessionId);
+    const sessionIdIsUUID = log.sessionId && isValidUUID(log.sessionId);
+    console.log('[RemoteRepo] Inserting workout log for user:', userId, 'sessionId:', log.sessionId, 'isUUID:', sessionIdIsUUID);
     try {
-      const { data: existing } = await supabase
-        .from('workout_logs')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('session_id', log.sessionId)
-        .maybeSingle();
+      if (sessionIdIsUUID) {
+        const { data: existing } = await supabase
+          .from('workout_logs')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('session_id', log.sessionId)
+          .maybeSingle();
 
-      if (existing) {
-        console.log('[RemoteRepo] Workout log already exists for session:', log.sessionId);
-        return existing;
+        if (existing) {
+          console.log('[RemoteRepo] Workout log already exists for session:', log.sessionId);
+          return existing;
+        }
       }
 
       const { data, error } = await supabase
         .from('workout_logs')
         .insert({
           user_id: userId,
-          session_id: log.sessionId || null,
+          session_id: sessionIdIsUUID ? log.sessionId : null,
           completed_at: log.date,
           duration_minutes: log.duration || 0,
           notes: log.notes || null,

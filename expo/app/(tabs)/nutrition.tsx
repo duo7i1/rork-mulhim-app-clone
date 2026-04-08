@@ -23,6 +23,7 @@ import { MealStructure, MealSuggestion, WeeklyMealPlan, DailyMealPlan, GroceryLi
 type FrequencyOption = "daily" | "3-5_weekly" | "1-2_weekly" | "rarely" | "never";
 
 export default function NutritionScreen() {
+  console.log("[NutritionScreen] Rendering");
   const router = useRouter();
   const { t, language } = useTranslation();
   const { 

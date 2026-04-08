@@ -10,9 +10,11 @@ export default function Index() {
   const { hasSelectedLanguage, isLoading: languageLoading, t } = useLanguage();
   const { user, isLoading: authLoading } = useAuth();
 
-  if (languageLoading || profileLoading || authLoading) {
+  const isLoading = languageLoading || profileLoading || authLoading;
+
+  if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} testID="loading-screen">
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.text}>{t.common.loading}</Text>
       </View>
@@ -20,11 +22,12 @@ export default function Index() {
   }
 
   if (!hasSelectedLanguage) {
+    console.log('[Index] No language selected, redirecting to welcome');
     return <Redirect href={"/welcome" as any} />;
   }
 
   if (user && hasProfile) {
-    console.log('[Index] User logged in with profile in Supabase, redirecting to plan');
+    console.log('[Index] User logged in with profile, redirecting to plan');
     return <Redirect href={"/(tabs)/plan" as any} />;
   }
 
@@ -53,5 +56,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     color: Colors.textSecondary,
+    marginTop: 8,
   },
 });

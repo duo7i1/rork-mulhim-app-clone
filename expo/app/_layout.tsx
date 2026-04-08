@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { View } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { FitnessProvider } from "@/providers/FitnessProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { LanguageProvider } from "@/providers/LanguageProvider";
@@ -19,11 +19,18 @@ console.error = (...args: any[]) => {
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 60 * 5,
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: "Back", animation: "slide_from_right" }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -40,6 +47,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
+    console.log('[RootLayout] App mounted, hiding splash screen');
     SplashScreen.hideAsync();
   }, []);
 
@@ -49,7 +57,7 @@ export default function RootLayout() {
         <LanguageProvider>
           <AuthProvider>
             <FitnessProvider>
-              <View style={{ flex: 1 }}>
+              <View style={layoutStyles.root}>
                 <RootLayoutNav />
               </View>
             </FitnessProvider>
@@ -59,3 +67,9 @@ export default function RootLayout() {
     </trpc.Provider>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

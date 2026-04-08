@@ -86,6 +86,7 @@ const ingredientMeasurements: Record<string, IngredientMeasurement> = {
 };
 
 export default function MealDetailsScreen() {
+  console.log("[MealDetails] Rendering meal details");
   const params = useLocalSearchParams();
   const router = useRouter();
   const { updateMealInPlan } = useFitness();

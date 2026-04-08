@@ -25,6 +25,7 @@ import Colors from "@/constants/colors";
 import { useTranslation } from "@/providers/LanguageProvider";
 
 export default function BioinformaticsScreen() {
+  console.log("[Bioinformatics] Rendering bioinformatics page");
   const { t } = useTranslation();
   const [email, setEmail] = useState<string>("");
   const [isWaitlisted, setIsWaitlisted] = useState<boolean>(false);

@@ -25,6 +25,7 @@ import {
 type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export default function OnboardingScreen() {
+  console.log("[OnboardingScreen] Rendering onboarding");
   const router = useRouter();
   const { saveProfile } = useFitness();
   const { t } = useLanguage();

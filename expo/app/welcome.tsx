@@ -14,6 +14,7 @@ import { useLanguage } from "@/providers/LanguageProvider";
 import { Language } from "@/constants/translations";
 
 export default function WelcomeScreen() {
+  console.log("[WelcomeScreen] Rendering welcome screen");
   const router = useRouter();
   const { setLanguage } = useLanguage();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -127,7 +128,7 @@ export default function WelcomeScreen() {
                 style={styles.languageButton}
                 onPress={() => handleSelectLanguage("ar")}
                 activeOpacity={0.85}
-                testID="language-ar"
+                testID="welcome-language-ar"
               >
                 <View style={styles.langContent}>
                   <Text style={styles.languageEmoji}>🇸🇦</Text>
@@ -142,7 +143,7 @@ export default function WelcomeScreen() {
                 style={[styles.languageButton, styles.languageButtonAlt]}
                 onPress={() => handleSelectLanguage("en")}
                 activeOpacity={0.85}
-                testID="language-en"
+                testID="welcome-language-en"
               >
                 <View style={styles.langContent}>
                   <Text style={styles.languageEmoji}>🇺🇸</Text>

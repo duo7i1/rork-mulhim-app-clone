@@ -14,6 +14,7 @@ import Colors from "@/constants/colors";
 import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function AccountPromptScreen() {
+  console.log("[AccountPrompt] Rendering account prompt");
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
