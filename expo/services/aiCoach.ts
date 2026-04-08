@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export interface AIMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -43,19 +41,37 @@ export interface AICoachRequestBody {
   language?: 'ar' | 'en';
 }
 
+const EDGE_FUNCTION_URL = 'https://fkwlgzkglyrmzdbscqbj.supabase.co/functions/v1/ai-coach';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2xnemtnbHlybXpkYnNjcWJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDUxMTUsImV4cCI6MjA4NTI4MTExNX0.c078nkR2_TJ9b9oPfukp-tI7pXQrosdGPMWJXqeN8Nc';
+
 export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICoachResponse> {
   console.log('[AICoach] Sending message, messages count:', body.messages.length);
-  console.log('[AICoach] Calling edge function via supabase.functions.invoke');
+  console.log('[AICoach] Calling edge function via direct fetch');
 
-  const { data, error } = await supabase.functions.invoke('ai-coach', {
-    body: body,
-  });
-
-  if (error) {
-    console.error('[AICoach] Edge function error:', error.message);
-    throw new Error(`AI Coach error: ${error.message}`);
+  let response: Response;
+  try {
+    response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (networkError: unknown) {
+    const msg = networkError instanceof Error ? networkError.message : 'Unknown network error';
+    console.error('[AICoach] Network error:', msg);
+    throw new Error(`AI Coach network error: ${msg}`);
   }
 
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'No error body');
+    console.error('[AICoach] Edge function error:', response.status, errorText);
+    throw new Error(`AI Coach error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
   console.log('[AICoach] Raw response:', JSON.stringify(data).substring(0, 500));
 
   const result = data as AICoachResponse;
