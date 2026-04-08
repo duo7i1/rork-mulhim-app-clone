@@ -73,7 +73,7 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topAccent} />
+
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.content}>
           <View style={styles.topSection}>
@@ -175,16 +175,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F7FA",
   },
-  topAccent: {
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 280,
-    backgroundColor: Colors.primary,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-  },
+
   safeArea: {
     flex: 1,
   },
