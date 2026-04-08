@@ -21,7 +21,7 @@ import { useFitness } from "@/providers/FitnessProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { remoteFitnessRepo } from "@/services/remoteRepo";
-import { sendAICoachMessage, AIToolCall } from "@/services/aiCoach";
+import { streamAICoachMessage, AIToolCall } from "@/services/aiCoach";
 
 interface ChatMessage {
   id: string;
@@ -169,6 +169,41 @@ export default function CoachScreen() {
     return context;
   }, [profile, nutritionPlan, currentWeekPlan, currentMealPlan, getCurrentStreak, language]);
 
+  const streamingMsgIdRef = useRef<string | null>(null);
+
+  const formatToolCallContent = useCallback((toolCalls: AIToolCall[]): string => {
+    const tc = toolCalls[0];
+    if (!tc) return '';
+    const toolArgs = tc.arguments;
+    if (!toolArgs) return '';
+
+    if (tc.name === 'suggestWorkout') {
+      const reason = toolArgs.reason as string;
+      const exercises = toolArgs.exercises as any[];
+      const exercisesList = exercises?.map((ex: any) =>
+        `• ${ex.name}: ${ex.sets} × ${ex.reps} (${language === 'ar' ? 'راحة' : 'rest'} ${ex.rest}${language === 'ar' ? 'ث' : 's'})`
+      ).join('\n') || '';
+      return `${reason || ''}\n\n${exercisesList}`;
+    } else if (tc.name === 'suggestMeal') {
+      const mealName = toolArgs.mealName as string;
+      const calories = toolArgs.calories as number;
+      const protein = toolArgs.protein as number;
+      const ingredients = toolArgs.ingredients as string[];
+      const cookingTips = toolArgs.cookingTips as string;
+      const ingredientsList = ingredients?.map((ing: string) => `• ${ing}`).join('\n') || '';
+      return `🍽 ${mealName}\n\n${language === 'ar' ? 'السعرات' : 'Calories'}: ${calories} | ${language === 'ar' ? 'البروتين' : 'Protein'}: ${protein}g\n\n${language === 'ar' ? 'المكونات' : 'Ingredients'}:\n${ingredientsList}\n\n${language === 'ar' ? 'نصائح' : 'Tips'}: ${cookingTips}`;
+    } else if (tc.name === 'trackProgress') {
+      const recommendation = toolArgs.recommendation as string;
+      return recommendation || '';
+    } else if (tc.name === 'adjustPlan') {
+      const changes = toolArgs.changes as string[];
+      const reason = toolArgs.reason as string;
+      const changesList = changes?.map((c: string) => `• ${c}`).join('\n') || '';
+      return `${reason || ''}\n\n${changesList}`;
+    }
+    return '';
+  }, [language]);
+
   const sendMessageToAI = useCallback(async (userText: string) => {
     setError(null);
     setIsGenerating(true);
@@ -179,96 +214,126 @@ export default function CoachScreen() {
       content: userText,
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const assistantMsgId = `msg-${Date.now()}-assistant`;
+    streamingMsgIdRef.current = assistantMsgId;
+
+    const streamingMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+    };
+
+    setMessages(prev => [...prev, userMsg, streamingMsg]);
     scrollToBottom();
 
-    try {
-      const conversationHistory = messages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-      conversationHistory.push({ role: 'user', content: userText });
+    const conversationHistory = messages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+    conversationHistory.push({ role: 'user', content: userText });
 
-      const context = buildRequestContext();
+    const context = buildRequestContext();
 
-      const response = await sendAICoachMessage({
+    let receivedToolCalls: AIToolCall[] = [];
+    let fullContent = '';
+
+    await streamAICoachMessage(
+      {
         messages: conversationHistory,
         ...context,
-      } as any);
+      } as any,
+      {
+        onToken: (token: string) => {
+          fullContent += token;
+          const currentContent = fullContent;
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMsgId ? { ...m, content: currentContent } : m
+            )
+          );
+          scrollToBottom();
+        },
+        onToolCalls: (toolCalls: AIToolCall[]) => {
+          console.log('[CoachScreen] Stream tool calls received:', toolCalls.length);
+          receivedToolCalls = toolCalls;
+          const toolResults = processToolCalls(toolCalls);
 
-      let assistantContent = response.content || '';
-      let toolResults: string[] = [];
-
-      if (response.toolCalls && response.toolCalls.length > 0) {
-        toolResults = processToolCalls(response.toolCalls);
-        if (!assistantContent && toolResults.length > 0) {
-          const toolArgs = response.toolCalls[0]?.arguments;
-          if (toolArgs) {
-            if (response.toolCalls[0].name === 'suggestWorkout') {
-              const reason = toolArgs.reason as string;
-              const exercises = toolArgs.exercises as any[];
-              const exercisesList = exercises?.map((ex: any) =>
-                `• ${ex.name}: ${ex.sets} × ${ex.reps} (${language === 'ar' ? 'راحة' : 'rest'} ${ex.rest}${language === 'ar' ? 'ث' : 's'})`
-              ).join('\n') || '';
-              assistantContent = `${reason || ''}\n\n${exercisesList}`;
-            } else if (response.toolCalls[0].name === 'suggestMeal') {
-              const mealName = toolArgs.mealName as string;
-              const calories = toolArgs.calories as number;
-              const protein = toolArgs.protein as number;
-              const ingredients = toolArgs.ingredients as string[];
-              const cookingTips = toolArgs.cookingTips as string;
-              const ingredientsList = ingredients?.map((ing: string) => `• ${ing}`).join('\n') || '';
-              assistantContent = `🍽 ${mealName}\n\n${language === 'ar' ? 'السعرات' : 'Calories'}: ${calories} | ${language === 'ar' ? 'البروتين' : 'Protein'}: ${protein}g\n\n${language === 'ar' ? 'المكونات' : 'Ingredients'}:\n${ingredientsList}\n\n${language === 'ar' ? 'نصائح' : 'Tips'}: ${cookingTips}`;
-            } else if (response.toolCalls[0].name === 'trackProgress') {
-              const recommendation = toolArgs.recommendation as string;
-              assistantContent = recommendation || toolResults.join('\n');
-            } else if (response.toolCalls[0].name === 'adjustPlan') {
-              const changes = toolArgs.changes as string[];
-              const reason = toolArgs.reason as string;
-              const changesList = changes?.map((c: string) => `• ${c}`).join('\n') || '';
-              assistantContent = `${reason || ''}\n\n${changesList}`;
-            }
+          let toolContent = formatToolCallContent(toolCalls);
+          if (toolContent && !fullContent) {
+            fullContent = toolContent;
+          } else if (toolContent && fullContent) {
+            fullContent = fullContent + '\n\n' + toolContent;
           }
-        }
+
+          const finalContent = fullContent || (language === 'ar' ? 'تم!' : 'Done!');
+
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: finalContent.trim(),
+                    toolCalls: toolCalls,
+                    toolResults: toolResults.length > 0 ? toolResults : undefined,
+                  }
+                : m
+            )
+          );
+          scrollToBottom();
+        },
+        onDone: (finalFullContent: string, _finishReason: string) => {
+          console.log('[CoachScreen] Stream done, content length:', finalFullContent.length);
+          streamingMsgIdRef.current = null;
+
+          let finalContent = fullContent || finalFullContent;
+
+          if (receivedToolCalls.length > 0 && !finalContent) {
+            finalContent = formatToolCallContent(receivedToolCalls);
+          }
+
+          if (!finalContent) {
+            finalContent = language === 'ar' ? 'تم!' : 'Done!';
+          }
+
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMsgId
+                ? { ...m, content: finalContent.trim() }
+                : m
+            )
+          );
+
+          setIsGenerating(false);
+
+          if (user?.id) {
+            void remoteFitnessRepo.saveChatMessage(
+              user.id,
+              userText,
+              finalContent.trim(),
+              userText.substring(0, 100)
+            );
+          }
+        },
+        onError: (err: Error) => {
+          console.error('[CoachScreen] Stream error:', err);
+          streamingMsgIdRef.current = null;
+          setError(err?.message || 'Unknown error');
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: language === 'ar' ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.',
+                  }
+                : m
+            )
+          );
+          setIsGenerating(false);
+          scrollToBottom();
+        },
       }
-
-      if (!assistantContent) {
-        assistantContent = language === 'ar' ? 'تم!' : 'Done!';
-      }
-
-      const assistantMsg: ChatMessage = {
-        id: `msg-${Date.now()}-assistant`,
-        role: 'assistant',
-        content: assistantContent.trim(),
-        toolCalls: response.toolCalls.length > 0 ? response.toolCalls : undefined,
-        toolResults: toolResults.length > 0 ? toolResults : undefined,
-      };
-
-      setMessages(prev => [...prev, assistantMsg]);
-      scrollToBottom();
-
-      if (user?.id) {
-        void remoteFitnessRepo.saveChatMessage(
-          user.id,
-          userText,
-          assistantContent.trim(),
-          userText.substring(0, 100)
-        );
-      }
-    } catch (err: any) {
-      console.error('[CoachScreen] AI error:', err);
-      setError(err?.message || 'Unknown error');
-      const errorMsg: ChatMessage = {
-        id: `msg-${Date.now()}-error`,
-        role: 'assistant',
-        content: language === 'ar' ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.',
-      };
-      setMessages(prev => [...prev, errorMsg]);
-      scrollToBottom();
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [messages, buildRequestContext, processToolCalls, scrollToBottom, user?.id, language]);
+    );
+  }, [messages, buildRequestContext, processToolCalls, formatToolCallContent, scrollToBottom, user?.id, language]);
 
   const handleSend = useCallback(() => {
     if (input.trim() && !isGenerating) {
