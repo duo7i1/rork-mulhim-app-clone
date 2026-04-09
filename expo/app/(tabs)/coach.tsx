@@ -298,7 +298,7 @@ export default function CoachScreen() {
           setMessages(prev =>
             prev.map(m =>
               m.id === assistantMsgId
-                ? { ...m, content: finalContent.trim(), toolCalls: m.toolCalls ?? (receivedToolCalls.length > 0 ? receivedToolCalls : undefined), toolResults: m.toolResults }
+                ? { ...m, content: finalContent.trim(), toolCalls: receivedToolCalls.length > 0 ? receivedToolCalls : (m.toolCalls || undefined), toolResults: m.toolResults }
                 : m
             )
           );
@@ -623,19 +623,23 @@ export default function CoachScreen() {
                         {message.content}
                       </Text>
                     </View>
-                    {message.toolCalls && message.toolCalls.length > 0 && !(isGenerating && message.id === streamingMsgIdRef.current) && (() => {
+                    {!(isGenerating && message.id === streamingMsgIdRef.current) && (() => {
                       const workoutCall = message.toolCalls?.find(tc => tc.name === 'suggestWorkout');
                       const mealCall = message.toolCalls?.find(tc => tc.name === 'suggestMeal');
                       
-                      if (workoutCall || mealCall) {
+                      const isLastAssistant = message.role === 'assistant' && msgIndex === messages.length - 1;
+                      const hasWorkoutData = workoutCall || (isLastAssistant && lastSuggestedWorkout && !message.toolCalls?.find(tc => tc.name === 'suggestMeal'));
+                      const hasMealData = mealCall || (isLastAssistant && lastSuggestedMeal && !message.toolCalls?.find(tc => tc.name === 'suggestWorkout'));
+                      
+                      if (hasWorkoutData || hasMealData) {
                         return (
                           <TouchableOpacity 
                             style={styles.inlineSaveButton}
                             onPress={() => {
-                              if (workoutCall) {
-                                openSaveModal('workout', workoutCall.arguments);
-                              } else if (mealCall) {
-                                openSaveModal('meal', mealCall.arguments);
+                              if (hasWorkoutData) {
+                                openSaveModal('workout', workoutCall?.arguments || lastSuggestedWorkout);
+                              } else if (hasMealData) {
+                                openSaveModal('meal', mealCall?.arguments || lastSuggestedMeal);
                               }
                             }}
                           >
