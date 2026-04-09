@@ -660,7 +660,7 @@ export default function CoachScreen() {
                     <View>
                       {renderMessageContent(message.content)}
                     </View>
-                    {message.toolCalls && message.toolCalls.length > 0 && (() => {
+                    {message.toolCalls && message.toolCalls.length > 0 && ((() => {
                       const workoutCall = message.toolCalls.find(tc => tc.name === 'suggestWorkout');
                       const mealCall = message.toolCalls.find(tc => tc.name === 'suggestMeal');
                       
@@ -682,7 +682,7 @@ export default function CoachScreen() {
                         );
                       }
                       return null;
-                    })()
+                    })())}
                   </View>
                 </View>
               )}
