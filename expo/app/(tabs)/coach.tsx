@@ -54,6 +54,8 @@ export default function CoachScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [lastSuggestedWorkout, setLastSuggestedWorkout] = useState<any>(null);
   const [lastSuggestedMeal, setLastSuggestedMeal] = useState<any>(null);
+  const [workoutMsgIds, setWorkoutMsgIds] = useState<Set<string>>(new Set());
+  const [mealMsgIds, setMealMsgIds] = useState<Set<string>>(new Set());
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveModalType, setSaveModalType] = useState<"workout" | "meal" | null>(null);
   const [selectedData, setSelectedData] = useState<any>(null);
@@ -69,12 +71,18 @@ export default function CoachScreen() {
     }, 100);
   }, []);
 
-  const processToolCalls = useCallback((toolCalls: AIToolCall[]) => {
+  const processToolCalls = useCallback((toolCalls: AIToolCall[], msgId?: string) => {
     const results: string[] = [];
     for (const tc of toolCalls) {
-      console.log('[CoachScreen] Processing tool call:', tc.name, tc.arguments);
+      console.log('[CoachScreen] Processing tool call:', tc.name, 'for msgId:', msgId);
       if (tc.name === 'suggestWorkout') {
         setLastSuggestedWorkout(tc.arguments);
+        if (msgId) {
+          if (!msgToolDataRef.current[msgId]) msgToolDataRef.current[msgId] = {};
+          msgToolDataRef.current[msgId].workout = tc.arguments;
+          setWorkoutMsgIds(prev => new Set(prev).add(msgId));
+          console.log('[CoachScreen] Stored workout data for msgId:', msgId);
+        }
         const exercises = tc.arguments.exercises as any[];
         const muscleGroup = tc.arguments.muscleGroup as string;
         results.push(
@@ -84,6 +92,12 @@ export default function CoachScreen() {
         );
       } else if (tc.name === 'suggestMeal') {
         setLastSuggestedMeal(tc.arguments);
+        if (msgId) {
+          if (!msgToolDataRef.current[msgId]) msgToolDataRef.current[msgId] = {};
+          msgToolDataRef.current[msgId].meal = tc.arguments;
+          setMealMsgIds(prev => new Set(prev).add(msgId));
+          console.log('[CoachScreen] Stored meal data for msgId:', msgId);
+        }
         const mealName = tc.arguments.mealName as string;
         results.push(
           language === 'ar'
@@ -170,6 +184,7 @@ export default function CoachScreen() {
   }, [profile, nutritionPlan, currentWeekPlan, currentMealPlan, getCurrentStreak, language]);
 
   const streamingMsgIdRef = useRef<string | null>(null);
+  const msgToolDataRef = useRef<Record<string, { workout?: any; meal?: any }>>({});
 
   const formatToolCallContent = useCallback((toolCalls: AIToolCall[]): string => {
     const tc = toolCalls[0];
@@ -256,7 +271,7 @@ export default function CoachScreen() {
         onToolCalls: (toolCalls: AIToolCall[]) => {
           console.log('[CoachScreen] Stream tool calls received:', toolCalls.length);
           receivedToolCalls = toolCalls;
-          const toolResults = processToolCalls(toolCalls);
+          const toolResults = processToolCalls(toolCalls, assistantMsgId);
 
           let toolContent = formatToolCallContent(toolCalls);
           if (toolContent && !fullContent) {
@@ -623,32 +638,51 @@ export default function CoachScreen() {
                         {message.content}
                       </Text>
                     </View>
-                    {!(isGenerating && message.id === streamingMsgIdRef.current) && (() => {
-                      const workoutCall = message.toolCalls?.find(tc => tc.name === 'suggestWorkout');
-                      const mealCall = message.toolCalls?.find(tc => tc.name === 'suggestMeal');
+                    {!isGenerating && message.role === 'assistant' && (lastSuggestedWorkout || lastSuggestedMeal || workoutMsgIds.has(message.id) || mealMsgIds.has(message.id) || (message.toolCalls && message.toolCalls.length > 0)) && (() => {
+                      const workoutCall = message.toolCalls?.find(tc => tc.name === 'suggestWorkout' || (tc.arguments && Array.isArray((tc.arguments as any).exercises)));
+                      const mealCall = message.toolCalls?.find(tc => tc.name === 'suggestMeal' || (tc.arguments && (tc.arguments as any).mealName));
+                      const refData = msgToolDataRef.current[message.id];
+                      const isWorkoutMsg = workoutMsgIds.has(message.id);
+                      const isMealMsg = mealMsgIds.has(message.id);
                       
-                      const isLastAssistant = message.role === 'assistant' && msgIndex === messages.length - 1;
-                      const hasWorkoutData = workoutCall || (isLastAssistant && lastSuggestedWorkout && !message.toolCalls?.find(tc => tc.name === 'suggestMeal'));
-                      const hasMealData = mealCall || (isLastAssistant && lastSuggestedMeal && !message.toolCalls?.find(tc => tc.name === 'suggestWorkout'));
+                      const isLastAssistant = msgIndex === messages.length - 1;
+                      const hasWorkoutData = workoutCall || refData?.workout || isWorkoutMsg || (isLastAssistant && lastSuggestedWorkout);
+                      const hasMealData = mealCall || refData?.meal || isMealMsg || (isLastAssistant && lastSuggestedMeal);
                       
-                      if (hasWorkoutData || hasMealData) {
-                        return (
-                          <TouchableOpacity 
-                            style={styles.inlineSaveButton}
-                            onPress={() => {
-                              if (hasWorkoutData) {
-                                openSaveModal('workout', workoutCall?.arguments || lastSuggestedWorkout);
-                              } else if (hasMealData) {
-                                openSaveModal('meal', mealCall?.arguments || lastSuggestedMeal);
-                              }
-                            }}
-                          >
-                            <Save size={16} color={Colors.primary} />
-                            <Text style={styles.inlineSaveButtonText}>{t.coach.save}</Text>
-                          </TouchableOpacity>
-                        );
-                      }
-                      return null;
+                      console.log('[CoachScreen] SAVE BTN CHECK | msgId:', message.id, '| tcCount:', message.toolCalls?.length ?? 0, '| wCall:', !!workoutCall, '| mCall:', !!mealCall, '| refW:', !!refData?.workout, '| refM:', !!refData?.meal, '| wMsgSet:', isWorkoutMsg, '| mMsgSet:', isMealMsg, '| isLast:', isLastAssistant, '| lastW:', !!lastSuggestedWorkout, '| lastM:', !!lastSuggestedMeal, '| RESULT hasW:', !!hasWorkoutData, 'hasM:', !!hasMealData);
+                      
+                      if (!hasWorkoutData && !hasMealData) return null;
+                      
+                      return (
+                        <View style={{ marginTop: 8 }}>
+                          {hasWorkoutData && (
+                            <TouchableOpacity 
+                              style={styles.inlineSaveButton}
+                              onPress={() => {
+                                const data = workoutCall?.arguments || refData?.workout || lastSuggestedWorkout;
+                                console.log('[CoachScreen] SAVE WORKOUT pressed, hasData:', !!data);
+                                if (data) openSaveModal('workout', data);
+                              }}
+                            >
+                              <Save size={16} color={Colors.primary} />
+                              <Text style={styles.inlineSaveButtonText}>{t.coach.saveWorkout}</Text>
+                            </TouchableOpacity>
+                          )}
+                          {hasMealData && (
+                            <TouchableOpacity 
+                              style={[styles.inlineSaveButton, hasWorkoutData ? { marginTop: 6 } : undefined]}
+                              onPress={() => {
+                                const data = mealCall?.arguments || refData?.meal || lastSuggestedMeal;
+                                console.log('[CoachScreen] SAVE MEAL pressed, hasData:', !!data);
+                                if (data) openSaveModal('meal', data);
+                              }}
+                            >
+                              <Save size={16} color={Colors.primary} />
+                              <Text style={styles.inlineSaveButtonText}>{t.coach.saveMeal}</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
                     })()}
                   </View>
                 </View>
