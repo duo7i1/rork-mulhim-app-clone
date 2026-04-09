@@ -298,7 +298,7 @@ export default function CoachScreen() {
           setMessages(prev =>
             prev.map(m =>
               m.id === assistantMsgId
-                ? { ...m, content: finalContent.trim() }
+                ? { ...m, content: finalContent.trim(), toolCalls: m.toolCalls ?? (receivedToolCalls.length > 0 ? receivedToolCalls : undefined), toolResults: m.toolResults }
                 : m
             )
           );
