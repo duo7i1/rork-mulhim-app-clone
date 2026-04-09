@@ -186,6 +186,56 @@ export default function CoachScreen() {
   const streamingMsgIdRef = useRef<string | null>(null);
   const msgToolDataRef = useRef<Record<string, { workout?: any; meal?: any }>>({});
 
+  const tryDetectWorkoutFromText = useCallback((content: string): any | null => {
+    const exerciseRegex = /[•\-\*]\s*(.+?):\s*(\d+)\s*[×xX]\s*(\d+)(?:\s*\((?:راحة|rest)\s*(\d+))?/g;
+    const exercises: { name: string; sets: number; reps: number; rest: number }[] = [];
+    let exMatch;
+    while ((exMatch = exerciseRegex.exec(content)) !== null) {
+      exercises.push({
+        name: exMatch[1].trim(),
+        sets: parseInt(exMatch[2]),
+        reps: parseInt(exMatch[3]),
+        rest: parseInt(exMatch[4] || '60'),
+      });
+    }
+    if (exercises.length >= 2) {
+      const mgAr = content.match(/(?:تمارين|تمرين|عضلة|عضلات)\s+([\u0600-\u06FF\s]+?)(?:\n|:|$)/);
+      const mgEn = content.match(/(?:exercises? for|workout for|muscle group)\s+([\w\s]+?)(?:\n|:|$)/i);
+      const muscleGroup = mgAr?.[1]?.trim() || mgEn?.[1]?.trim() || (language === 'ar' ? 'عام' : 'General');
+      console.log('[CoachScreen] Detected workout from text:', exercises.length, 'exercises');
+      return { exercises, muscleGroup, reason: '' };
+    }
+    return null;
+  }, [language]);
+
+  const tryDetectMealFromText = useCallback((content: string): any | null => {
+    const calorieMatch = content.match(/(?:السعرات|سعر[اة]?|calories?|cal|كالوري)\s*:?\s*(\d+)/i);
+    const proteinMatch = content.match(/(?:البروتين|بروتين|protein)\s*:?\s*(\d+)/i);
+    if (calorieMatch && proteinMatch) {
+      const mealNameMatch = content.match(/🍽\s*(.+?)(?:\n|$)/) || content.match(/(?:وجبة|meal|اسم الوجبة)\s*:?\s*(.+?)(?:\n|$)/i);
+      const ingredients: string[] = [];
+      const ingSection = content.match(/(?:المكونات|مكونات|ingredients?)\s*:?\s*\n([\s\S]*?)(?:\n\n|$)/i);
+      if (ingSection) {
+        const ingRegex = /[•\-\*]\s*(.+)/g;
+        let ingMatch;
+        while ((ingMatch = ingRegex.exec(ingSection[1])) !== null) {
+          ingredients.push(ingMatch[1].trim());
+        }
+      }
+      const mealName = (mealNameMatch?.[1] || mealNameMatch?.[2] || (language === 'ar' ? 'وجبة مقترحة' : 'Suggested Meal')).trim();
+      console.log('[CoachScreen] Detected meal from text:', mealName);
+      return {
+        mealName,
+        calories: parseInt(calorieMatch[1]),
+        protein: parseInt(proteinMatch[1]),
+        mealType: 'lunch',
+        ingredients,
+        cookingTips: '',
+      };
+    }
+    return null;
+  }, [language]);
+
   const formatToolCallContent = useCallback((toolCalls: AIToolCall[]): string => {
     const tc = toolCalls[0];
     if (!tc) return '';
@@ -318,6 +368,23 @@ export default function CoachScreen() {
             )
           );
 
+          if (receivedToolCalls.length === 0 && finalContent) {
+            const detectedWorkout = tryDetectWorkoutFromText(finalContent);
+            if (detectedWorkout) {
+              if (!msgToolDataRef.current[assistantMsgId]) msgToolDataRef.current[assistantMsgId] = {};
+              msgToolDataRef.current[assistantMsgId].workout = detectedWorkout;
+              setWorkoutMsgIds(prev => new Set(prev).add(assistantMsgId));
+              setLastSuggestedWorkout(detectedWorkout);
+            }
+            const detectedMeal = tryDetectMealFromText(finalContent);
+            if (detectedMeal) {
+              if (!msgToolDataRef.current[assistantMsgId]) msgToolDataRef.current[assistantMsgId] = {};
+              msgToolDataRef.current[assistantMsgId].meal = detectedMeal;
+              setMealMsgIds(prev => new Set(prev).add(assistantMsgId));
+              setLastSuggestedMeal(detectedMeal);
+            }
+          }
+
           setIsGenerating(false);
 
           if (user?.id) {
@@ -348,7 +415,7 @@ export default function CoachScreen() {
         },
       }
     );
-  }, [messages, buildRequestContext, processToolCalls, formatToolCallContent, scrollToBottom, user?.id, language]);
+  }, [messages, buildRequestContext, processToolCalls, formatToolCallContent, scrollToBottom, user?.id, language, tryDetectWorkoutFromText, tryDetectMealFromText]);
 
   const handleSend = useCallback(() => {
     if (input.trim() && !isGenerating) {
