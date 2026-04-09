@@ -623,7 +623,7 @@ export default function CoachScreen() {
                         {message.content}
                       </Text>
                     </View>
-                    {message.toolCalls && message.toolCalls.length > 0 && !isGenerating && (() => {
+                    {message.toolCalls && message.toolCalls.length > 0 && !(isGenerating && message.id === streamingMsgIdRef.current) && (() => {
                       const workoutCall = message.toolCalls?.find(tc => tc.name === 'suggestWorkout');
                       const mealCall = message.toolCalls?.find(tc => tc.name === 'suggestMeal');
                       
