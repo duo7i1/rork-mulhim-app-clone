@@ -10,7 +10,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 90,
       muscleGroup: "Chest",
       equipment: ["barbell", "bench"],
-      videoUrl: "https://www.youtube.com/watch?v=rT7DgCr-3pg",
+      videoUrl: "https://www.youtube.com/results?search_query=Bench+Press+تمرين+tutorial",
       description: "Lie on a flat bench and press the barbell up from chest level. Keep your feet planted and maintain a slight arch in your lower back.",
       recommendedWeight: {
         male: {
@@ -33,7 +33,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Chest",
       equipment: ["dumbbells", "bench"],
-      videoUrl: "https://www.youtube.com/watch?v=8iPEnn-ltC8",
+      videoUrl: "https://www.youtube.com/results?search_query=Incline+Dumbbell+Press+تمرين+tutorial",
       description: "Set the bench to 30-45 degrees. Press dumbbells up while keeping your shoulders back and chest up. Focus on upper chest contraction.",
       recommendedWeight: {
         male: {
@@ -56,7 +56,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Chest",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=IODxDxX7oi4",
+      videoUrl: "https://www.youtube.com/results?search_query=Push+ups+تمرين+tutorial",
       description: "Start in a plank position with hands shoulder-width apart. Lower your body until chest nearly touches the ground, then push back up.",
       recommendedWeight: {
         male: {
@@ -79,7 +79,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Chest",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=KYIPC75rSQg",
+      videoUrl: "https://www.youtube.com/results?search_query=Wide+Push+ups+تمرين+tutorial",
       description: "Push-ups with hands placed wider than shoulder-width to emphasize chest muscles.",
       recommendedWeight: {
         male: {
@@ -102,7 +102,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Chest",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=J0DnG1_S92I",
+      videoUrl: "https://www.youtube.com/results?search_query=Diamond+Push+ups+تمرين+tutorial",
       description: "Push-ups with hands close together forming a diamond shape. Targets triceps and inner chest.",
       recommendedWeight: {
         male: {
@@ -125,7 +125,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Chest",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=SKPab2YC8BE",
+      videoUrl: "https://www.youtube.com/results?search_query=Decline+Push+ups+تمرين+tutorial",
       description: "Push-ups with feet elevated on a chair or bench. Targets upper chest.",
       recommendedWeight: {
         male: {
@@ -148,7 +148,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Chest",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=eozdVDA78K0",
+      videoUrl: "https://www.youtube.com/results?search_query=Dumbbell+Flyes+تمرين+tutorial",
       description: "Lie on a bench with dumbbells. Open arms wide to the sides, then bring them together above your chest.",
       recommendedWeight: {
         male: {
@@ -173,7 +173,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 90,
       muscleGroup: "Back",
       equipment: ["pullup-bar"],
-      videoUrl: "https://www.youtube.com/watch?v=eGo4IYlbE5g",
+      videoUrl: "https://www.youtube.com/results?search_query=Pull+ups+تمرين+tutorial",
       description: "Hang from a pull-up bar with an overhand grip. Pull yourself up until your chin is above the bar, then lower down with control.",
       recommendedWeight: {
         male: {
@@ -196,7 +196,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Back",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=hXTc1mDnZCw",
+      videoUrl: "https://www.youtube.com/results?search_query=Inverted+Rows+تمرين+tutorial",
       description: "Use a sturdy table or low bar. Lie underneath and pull your chest up to the bar.",
       recommendedWeight: {
         male: {
@@ -219,7 +219,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Back",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=cc6UVRS7PW4",
+      videoUrl: "https://www.youtube.com/results?search_query=Superman+exercise+تمرين+tutorial",
       description: "Lie face down, extend arms and legs, then lift them off the ground simultaneously.",
       recommendedWeight: {
         male: {
@@ -242,7 +242,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Back",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=4Z3BM3JnZuo",
+      videoUrl: "https://www.youtube.com/results?search_query=Reverse+Snow+Angels+تمرين+tutorial",
       description: "Lie face down, lift arms and make circular motions like snow angels to work upper back.",
       recommendedWeight: {
         male: {
@@ -265,7 +265,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Back",
       equipment: ["barbell"],
-      videoUrl: "https://www.youtube.com/watch?v=FWJR5Ve8bnQ",
+      videoUrl: "https://www.youtube.com/results?search_query=Barbell+Rows+تمرين+tutorial",
       description: "Bend at the hips and knees, keeping your back straight. Pull the barbell to your lower chest, squeezing your shoulder blades together.",
       recommendedWeight: {
         male: {
@@ -288,7 +288,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Back",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=pYcpY20QaE8",
+      videoUrl: "https://www.youtube.com/results?search_query=Dumbbell+Rows+تمرين+tutorial",
       description: "Support yourself on a bench with one hand. Row a dumbbell up to your hip, keeping your elbow close to your body.",
       recommendedWeight: {
         male: {
@@ -311,7 +311,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Back",
       equipment: ["cable-machine"],
-      videoUrl: "https://www.youtube.com/watch?v=CAwf7n6Luuc",
+      videoUrl: "https://www.youtube.com/results?search_query=Lat+Pulldown+تمرين+tutorial",
       description: "Sit at a lat pulldown machine. Pull the bar down to your upper chest while keeping your torso upright and squeezing your lats.",
       recommendedWeight: {
         male: {
@@ -336,7 +336,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 120,
       muscleGroup: "Legs",
       equipment: ["barbell"],
-      videoUrl: "https://www.youtube.com/watch?v=ultWZbUMPL8",
+      videoUrl: "https://www.youtube.com/results?search_query=Squats+تمرين+tutorial",
       description: "Place the barbell on your upper back. Squat down until thighs are parallel to the ground, keeping your chest up and knees tracking over toes.",
       recommendedWeight: {
         male: {
@@ -359,7 +359,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Legs",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=MeIiIdhvXT4",
+      videoUrl: "https://www.youtube.com/results?search_query=Goblet+Squats+تمرين+tutorial",
       description: "Hold a dumbbell close to your chest. Squat down keeping your chest up and elbows inside your knees.",
       recommendedWeight: {
         male: {
@@ -382,7 +382,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Legs",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=QOVaHwm-Q6U",
+      videoUrl: "https://www.youtube.com/results?search_query=Lunges+تمرين+tutorial",
       description: "Step forward with one leg, lowering your hips until both knees are bent at 90 degrees. Push back to starting position and alternate legs.",
       recommendedWeight: {
         male: {
@@ -405,7 +405,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=aclHkVaku9U",
+      videoUrl: "https://www.youtube.com/results?search_query=Bodyweight+Squats+تمرين+tutorial",
       description: "Stand with feet shoulder-width apart. Squat down keeping your chest up and weight on your heels. No equipment needed.",
       recommendedWeight: {
         male: {
@@ -428,7 +428,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=2C-uNgKwPLE",
+      videoUrl: "https://www.youtube.com/results?search_query=Bulgarian+Split+Squat+تمرين+tutorial",
       description: "Rear foot elevated on a chair, lower down into a lunge position. Great for quads and glutes.",
       recommendedWeight: {
         male: {
@@ -451,7 +451,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=A-cFYWvaHr0",
+      videoUrl: "https://www.youtube.com/results?search_query=Jump+Squats+تمرين+tutorial",
       description: "Explosive squat with a jump at the top. Great for power and fat burning.",
       recommendedWeight: {
         male: {
@@ -474,7 +474,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=y-wV4Venusw",
+      videoUrl: "https://www.youtube.com/results?search_query=Wall+Sit+تمرين+tutorial",
       description: "Lean against a wall with knees at 90 degrees. Hold position for time.",
       recommendedWeight: {
         male: {
@@ -497,7 +497,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=wPM8icPu6H8",
+      videoUrl: "https://www.youtube.com/results?search_query=Glute+Bridges+تمرين+tutorial",
       description: "Lie on back with knees bent, lift hips up by squeezing glutes. Great for posterior chain.",
       recommendedWeight: {
         male: {
@@ -520,7 +520,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Legs",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=Zfr6wizR8rs",
+      videoUrl: "https://www.youtube.com/results?search_query=Single+Leg+Deadlift+تمرين+tutorial",
       description: "Stand on one leg, hinge at the hip and reach down while extending the other leg back. Balance and hamstring work.",
       recommendedWeight: {
         male: {
@@ -543,7 +543,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 90,
       muscleGroup: "Legs",
       equipment: ["leg-press-machine"],
-      videoUrl: "https://www.youtube.com/watch?v=IZxyjW7MPJQ",
+      videoUrl: "https://www.youtube.com/results?search_query=Leg+Press+تمرين+tutorial",
       description: "Sit on the leg press machine with feet shoulder-width apart. Push the platform away by extending your legs, then slowly return to starting position.",
       recommendedWeight: {
         male: {
@@ -568,7 +568,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 90,
       muscleGroup: "Shoulders",
       equipment: ["barbell"],
-      videoUrl: "https://www.youtube.com/watch?v=QSxuqraC3O0",
+      videoUrl: "https://www.youtube.com/results?search_query=Overhead+Press+تمرين+tutorial",
       description: "Stand with feet shoulder-width apart. Press the barbell overhead from shoulder level until arms are fully extended. Lower with control.",
       recommendedWeight: {
         male: {
@@ -591,7 +591,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Shoulders",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=x4YNjHHyqn8",
+      videoUrl: "https://www.youtube.com/results?search_query=Pike+Push+ups+تمرين+tutorial",
       description: "Start in downward dog position. Lower your head to the ground and push back up. Targets shoulders.",
       recommendedWeight: {
         male: {
@@ -614,7 +614,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 90,
       muscleGroup: "Shoulders",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=tQhrk6WMcKw",
+      videoUrl: "https://www.youtube.com/results?search_query=Handstand+Push+ups+تمرين+tutorial",
       description: "Kick up to a handstand against a wall. Lower your head to the ground and press back up. Advanced move.",
       recommendedWeight: {
         male: {
@@ -637,7 +637,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Shoulders",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=qEwKCR5JCog",
+      videoUrl: "https://www.youtube.com/results?search_query=Dumbbell+Shoulder+Press+تمرين+tutorial",
       description: "Sit or stand with dumbbells at shoulder height. Press them overhead until arms are extended, then lower with control.",
       recommendedWeight: {
         male: {
@@ -660,7 +660,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Shoulders",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=3VcKaXpzqRo",
+      videoUrl: "https://www.youtube.com/results?search_query=Lateral+Raises+تمرين+tutorial",
       description: "Stand with dumbbells at your sides. Raise them out to the sides until arms are parallel to the ground, then lower slowly.",
       recommendedWeight: {
         male: {
@@ -683,7 +683,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Shoulders",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=2yjwXTZQDDI",
+      videoUrl: "https://www.youtube.com/results?search_query=Front+Raises+تمرين+tutorial",
       description: "Hold dumbbells in front of your thighs. Raise them forward and up to shoulder level, keeping a slight bend in your elbows.",
       recommendedWeight: {
         male: {
@@ -708,7 +708,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Biceps",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
+      videoUrl: "https://www.youtube.com/results?search_query=Bicep+Curls+تمرين+tutorial",
       description: "Stand with dumbbells at your sides, palms facing forward. Curl the weights up to shoulder level, keeping your elbows stationary.",
       recommendedWeight: {
         male: {
@@ -731,7 +731,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 75,
       muscleGroup: "Biceps",
       equipment: ["pullup-bar"],
-      videoUrl: "https://www.youtube.com/watch?v=brhWuCQ17FI",
+      videoUrl: "https://www.youtube.com/results?search_query=Chin+ups+تمرين+tutorial",
       description: "Hang from a bar with palms facing you. Pull yourself up focusing on biceps.",
       recommendedWeight: {
         male: {
@@ -754,7 +754,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Triceps",
       equipment: ["dip-bars"],
-      videoUrl: "https://www.youtube.com/watch?v=2z8JmcrW-As",
+      videoUrl: "https://www.youtube.com/results?search_query=Tricep+Dips+تمرين+tutorial",
       description: "Support yourself on parallel bars. Lower your body by bending your elbows until your upper arms are parallel to the ground, then push back up.",
       recommendedWeight: {
         male: {
@@ -777,7 +777,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Triceps",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=0326dy_-CzM",
+      videoUrl: "https://www.youtube.com/results?search_query=Bench+Dips+تمرين+tutorial",
       description: "Use a chair or bench behind you. Support your weight on your hands and lower your body down then push back up.",
       recommendedWeight: {
         male: {
@@ -800,7 +800,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Triceps",
       equipment: [],
-      videoUrl: "https://www.youtube.com/watch?v=bTsCz0kCNJI",
+      videoUrl: "https://www.youtube.com/results?search_query=Close+Grip+Push+ups+تمرين+tutorial",
       description: "Push-ups with hands closer together to emphasize triceps.",
       recommendedWeight: {
         male: {
@@ -823,7 +823,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Biceps",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=zC3nLlEvin4",
+      videoUrl: "https://www.youtube.com/results?search_query=Hammer+Curls+تمرين+tutorial",
       description: "Hold dumbbells with palms facing each other. Curl the weights up while maintaining the neutral grip throughout the movement.",
       recommendedWeight: {
         male: {
@@ -846,7 +846,7 @@ export const exerciseDatabase: Record<string, WorkoutExercise[]> = {
       rest: 60,
       muscleGroup: "Triceps",
       equipment: ["dumbbells"],
-      videoUrl: "https://www.youtube.com/watch?v=_gsUck-7M74",
+      videoUrl: "https://www.youtube.com/results?search_query=Tricep+Extensions+تمرين+tutorial",
       description: "Hold a dumbbell overhead with both hands. Lower it behind your head by bending elbows, then extend back up.",
       recommendedWeight: {
         male: {
