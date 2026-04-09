@@ -1,4 +1,4 @@
-import { Sparkles, Send, Bot, User, Save } from "lucide-react-native";
+import { Sparkles, Send, Bot, User, Save, ExternalLink } from "lucide-react-native";
 import React, { useState, useRef, useCallback } from "react";
 import {
   View,
@@ -14,6 +14,7 @@ import {
   Modal,
   Keyboard,
   TouchableWithoutFeedback,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
@@ -507,6 +508,44 @@ export default function CoachScreen() {
     setSaveToFavorites(false);
   };
 
+  const URL_REGEX = /(https?:\/\/[^\s)]+)/g;
+
+  const renderMessageContent = useCallback((content: string) => {
+    if (!content) return null;
+
+    const parts = content.split(URL_REGEX);
+    if (parts.length === 1) {
+      return (
+        <Text style={styles.assistantMessageText}>{content}</Text>
+      );
+    }
+
+    return (
+      <View style={styles.assistantMessageText}>
+        {parts.map((part, index) => {
+          if (URL_REGEX.test(part)) {
+            URL_REGEX.lastIndex = 0;
+            return (
+              <TouchableOpacity
+                key={`link-${index}`}
+                onPress={() => Linking.openURL(part)}
+                style={styles.linkContainer}
+                activeOpacity={0.7}
+              >
+                <ExternalLink size={14} color={Colors.primary} />
+                <Text style={styles.linkText} numberOfLines={1}>
+                  {decodeURIComponent(part.replace(/https?:\/\/(?:www\.)?/, '').split('?')[0]).substring(0, 40)}
+                </Text>
+              </TouchableOpacity>
+            );
+          }
+          URL_REGEX.lastIndex = 0;
+          return <Text key={`text-${index}`} style={styles.assistantMessageTextInner}>{part}</Text>;
+        })}
+      </View>
+    );
+  }, []);
+
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsScroll}>
@@ -619,23 +658,21 @@ export default function CoachScreen() {
                       </View>
                     )}
                     <View>
-                      <Text style={styles.assistantMessageText}>
-                        {message.content}
-                      </Text>
+                      {renderMessageContent(message.content)}
                     </View>
                     {message.toolCalls && message.toolCalls.length > 0 && (() => {
-                      const hasWorkout = message.toolCalls.some(tc => tc.name === 'suggestWorkout');
-                      const hasMeal = message.toolCalls.some(tc => tc.name === 'suggestMeal');
+                      const workoutCall = message.toolCalls.find(tc => tc.name === 'suggestWorkout');
+                      const mealCall = message.toolCalls.find(tc => tc.name === 'suggestMeal');
                       
-                      if (hasWorkout || hasMeal) {
+                      if (workoutCall || mealCall) {
                         return (
                           <TouchableOpacity 
                             style={styles.inlineSaveButton}
                             onPress={() => {
-                              if (hasWorkout) {
-                                openSaveModal('workout', lastSuggestedWorkout);
-                              } else if (hasMeal) {
-                                openSaveModal('meal', lastSuggestedMeal);
+                              if (workoutCall) {
+                                openSaveModal('workout', workoutCall.arguments);
+                              } else if (mealCall) {
+                                openSaveModal('meal', mealCall.arguments);
                               }
                             }}
                           >
@@ -645,7 +682,7 @@ export default function CoachScreen() {
                         );
                       }
                       return null;
-                    })()}
+                    })()
                   </View>
                 </View>
               )}
@@ -1085,6 +1122,29 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  assistantMessageTextInner: {
+    fontSize: 15,
+    color: Colors.text,
+    lineHeight: 22,
+  },
+  linkContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: `${Colors.primary}12`,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}30`,
+  },
+  linkText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: "600" as const,
+    flex: 1,
   },
   toolMessage: {
     flexDirection: "row",
