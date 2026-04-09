@@ -623,19 +623,19 @@ export default function CoachScreen() {
                         {message.content}
                       </Text>
                     </View>
-                    {message.toolCalls && message.toolCalls.length > 0 && (() => {
-                      const hasWorkout = message.toolCalls.some(tc => tc.name === 'suggestWorkout');
-                      const hasMeal = message.toolCalls.some(tc => tc.name === 'suggestMeal');
+                    {message.toolCalls && message.toolCalls.length > 0 && !isGenerating && (() => {
+                      const workoutCall = message.toolCalls?.find(tc => tc.name === 'suggestWorkout');
+                      const mealCall = message.toolCalls?.find(tc => tc.name === 'suggestMeal');
                       
-                      if (hasWorkout || hasMeal) {
+                      if (workoutCall || mealCall) {
                         return (
                           <TouchableOpacity 
                             style={styles.inlineSaveButton}
                             onPress={() => {
-                              if (hasWorkout) {
-                                openSaveModal('workout', lastSuggestedWorkout);
-                              } else if (hasMeal) {
-                                openSaveModal('meal', lastSuggestedMeal);
+                              if (workoutCall) {
+                                openSaveModal('workout', workoutCall.arguments);
+                              } else if (mealCall) {
+                                openSaveModal('meal', mealCall.arguments);
                               }
                             }}
                           >
