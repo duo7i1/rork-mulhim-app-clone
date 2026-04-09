@@ -831,6 +831,30 @@ export const remoteFitnessRepo = {
   async addFavoriteExercise(userId: string, exercise: Omit<FavoriteExercise, 'id' | 'addedAt'>): Promise<FavoriteExercise | null> {
     console.log('[RemoteRepo] Adding favorite exercise for user:', userId);
     try {
+      const { data: existing } = await supabase
+        .from('favorite_exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('name', exercise.name)
+        .maybeSingle();
+
+      if (existing) {
+        console.log('[RemoteRepo] Favorite exercise already exists, returning existing:', existing.id);
+        return {
+          id: existing.id,
+          name: existing.name,
+          sets: existing.sets,
+          reps: existing.reps,
+          rest: existing.rest_seconds,
+          muscleGroup: existing.muscle_group || '',
+          equipment: existing.equipment || [],
+          videoUrl: existing.video_url || undefined,
+          description: existing.description || undefined,
+          assignedWeight: existing.assigned_weight || undefined,
+          addedAt: existing.added_at,
+        };
+      }
+
       const { data, error } = await supabase
         .from('favorite_exercises')
         .insert({
