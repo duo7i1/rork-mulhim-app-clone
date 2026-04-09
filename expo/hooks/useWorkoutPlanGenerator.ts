@@ -155,7 +155,7 @@ function generateWarmupExercises(t: TranslationKeys) {
       equipment: [] as string[],
       description: t.plan.warmupGeneral,
       assignedWeight: "Body weight",
-      videoUrl: "https://youtu.be/-p0PA9Zt8zk?si=T8-h3y9EEMzK58a8",
+      videoUrl: "https://www.youtube.com/results?search_query=General+Warm+Up+تمرين+tutorial",
     },
     {
       id: "warmup-mobility",
