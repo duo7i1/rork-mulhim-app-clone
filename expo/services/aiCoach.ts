@@ -96,6 +96,26 @@ export async function sendAICoachMessage(body: AICoachRequestBody): Promise<AICo
   return result;
 }
 
+async function fallbackToNonStreaming(
+  body: AICoachRequestBody,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  console.log('[AICoach] Falling back to non-streaming request');
+  try {
+    const result = await sendAICoachMessage(body);
+    if (result.content) {
+      callbacks.onToken(result.content);
+    }
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      callbacks.onToolCalls(result.toolCalls);
+    }
+    callbacks.onDone(result.content || '', result.finishReason || 'stop');
+  } catch (fallbackErr) {
+    console.error('[AICoach] Fallback also failed:', fallbackErr);
+    callbacks.onError(fallbackErr instanceof Error ? fallbackErr : new Error('AI Coach request failed'));
+  }
+}
+
 export async function streamAICoachMessage(
   body: AICoachRequestBody,
   callbacks: StreamCallbacks
@@ -116,16 +136,14 @@ export async function streamAICoachMessage(
     });
   } catch (networkError: unknown) {
     const msg = networkError instanceof Error ? networkError.message : 'Unknown network error';
-    console.error('[AICoach] Stream network error:', msg);
-    callbacks.onError(new Error(`AI Coach network error: ${msg}`));
-    return;
+    console.error('[AICoach] Stream network error:', msg, '- trying non-streaming fallback');
+    return fallbackToNonStreaming(body, callbacks);
   }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => 'No error body');
-    console.error('[AICoach] Stream edge function error:', response.status, errorText);
-    callbacks.onError(new Error(`AI Coach error (${response.status}): ${errorText}`));
-    return;
+    console.error('[AICoach] Stream edge function error:', response.status, errorText, '- trying non-streaming fallback');
+    return fallbackToNonStreaming(body, callbacks);
   }
 
   const contentType = response.headers.get('content-type') || '';
@@ -150,9 +168,8 @@ export async function streamAICoachMessage(
   }
 
   if (!response.body) {
-    console.error('[AICoach] No response body for streaming');
-    callbacks.onError(new Error('No response body for streaming'));
-    return;
+    console.log('[AICoach] No response body for streaming - trying non-streaming fallback');
+    return fallbackToNonStreaming(body, callbacks);
   }
 
   try {
