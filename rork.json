@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "name": "Expo",
+      "name": "Mulhim 1.2",
       "path": "expo",
       "framework": "react-native"
     }
