@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router } from "expo-router";
@@ -23,25 +24,92 @@ import {
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useTranslation } from "@/providers/LanguageProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "@/services/supabase";
 
 export default function BioinformaticsScreen() {
   console.log("[Bioinformatics] Rendering bioinformatics page");
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [email, setEmail] = useState<string>("");
   const [isWaitlisted, setIsWaitlisted] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(true);
 
-  const handleJoinWaitlist = () => {
+  useEffect(() => {
+    const checkWaitlistStatus = async () => {
+      if (!user) {
+        setIsCheckingStatus(false);
+        return;
+      }
+      try {
+        console.log("[Bioinformatics] Checking waitlist status for user:", user.id);
+        const { data, error } = await supabase
+          .from('genetic_waitlist')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("[Bioinformatics] Error checking waitlist:", error);
+        } else if (data) {
+          console.log("[Bioinformatics] User already on waitlist");
+          setIsWaitlisted(true);
+        }
+      } catch (err) {
+        console.error("[Bioinformatics] Error checking waitlist status:", err);
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkWaitlistStatus();
+  }, [user]);
+
+  const handleJoinWaitlist = async () => {
     if (!email || !email.includes("@")) {
       Alert.alert(t.common.error, t.bioinformatics.invalidEmail);
       return;
     }
 
-    setIsWaitlisted(true);
-    Alert.alert(
-      t.bioinformatics.registeredTitle,
-      t.bioinformatics.registeredMessage,
-      [{ text: t.mealDetails.ok }]
-    );
+    setIsSubmitting(true);
+    try {
+      console.log("[Bioinformatics] Joining waitlist with email:", email);
+      const { error } = await supabase
+        .from('genetic_waitlist')
+        .insert({
+          user_id: user?.id ?? null,
+          email: email.trim().toLowerCase(),
+        });
+
+      if (error) {
+        console.error("[Bioinformatics] Waitlist insert error:", error);
+        if (error.code === '23505') {
+          setIsWaitlisted(true);
+          Alert.alert(
+            t.bioinformatics.registeredTitle,
+            t.bioinformatics.registeredMessage,
+            [{ text: t.mealDetails.ok }]
+          );
+        } else {
+          Alert.alert(t.common.error, error.message);
+        }
+        return;
+      }
+
+      console.log("[Bioinformatics] Successfully joined waitlist");
+      setIsWaitlisted(true);
+      Alert.alert(
+        t.bioinformatics.registeredTitle,
+        t.bioinformatics.registeredMessage,
+        [{ text: t.mealDetails.ok }]
+      );
+    } catch (err) {
+      console.error("[Bioinformatics] Waitlist error:", err);
+      Alert.alert(t.common.error, String(err));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -274,7 +342,9 @@ export default function BioinformaticsScreen() {
           <Text style={styles.waitlistSubtitle}>
             {t.bioinformatics.waitlistSubtitle}
           </Text>
-          {!isWaitlisted ? (
+          {isCheckingStatus ? (
+            <ActivityIndicator size="small" color={Colors.background} />
+          ) : !isWaitlisted ? (
             <>
               <TextInput
                 style={styles.input}
@@ -284,12 +354,18 @@ export default function BioinformaticsScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!isSubmitting}
               />
               <TouchableOpacity
-                style={styles.joinButton}
+                style={[styles.joinButton, isSubmitting && { opacity: 0.7 }]}
                 onPress={handleJoinWaitlist}
+                disabled={isSubmitting}
               >
-                <Text style={styles.joinButtonText}>{t.bioinformatics.joinWaitlist}</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.joinButtonText}>{t.bioinformatics.joinWaitlist}</Text>
+                )}
               </TouchableOpacity>
             </>
           ) : (
