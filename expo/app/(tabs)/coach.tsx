@@ -629,7 +629,7 @@ export default function CoachScreen() {
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>

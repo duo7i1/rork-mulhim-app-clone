@@ -23,6 +23,8 @@ import {
   Modal,
   TextInput,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -403,7 +405,10 @@ export default function ProfileScreen() {
         animationType="fade"
         onRequestClose={() => setShowWeightModal(false)}
       >
-        <View style={styles.weightModalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.weightModalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View style={styles.weightModalContent}>
             <Text style={styles.weightModalTitle}>{t.profile.updateWeight}</Text>
             <TextInput
@@ -433,7 +438,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -479,13 +484,17 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
 
   return (
     <SafeAreaView style={styles.modalContainer} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <View style={styles.modalHeader}>
         <Text style={styles.modalTitle}>{t.editProfile.title}</Text>
         <TouchableOpacity onPress={onClose}>
           <Text style={styles.closeButton}>{t.editProfile.cancel}</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView style={styles.modalScroll} contentContainerStyle={styles.editScrollContent}>
+      <ScrollView style={styles.modalScroll} contentContainerStyle={styles.editScrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.editSection}>
           <Text style={styles.editSectionTitle}>{t.editProfile.basicInfo}</Text>
           
@@ -755,6 +764,7 @@ function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
           </Text>
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
