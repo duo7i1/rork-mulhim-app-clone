@@ -13,7 +13,7 @@ import {
   Modal,
   Keyboard,
   TouchableWithoutFeedback,
-  Animated as RNAnimated,
+  KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -68,41 +68,6 @@ export default function CoachScreen() {
 
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const keyboardPadding = useRef(new RNAnimated.Value(0)).current;
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onShow = (e: any) => {
-      console.log('[CoachScreen] Keyboard show, height:', e.endCoordinates.height, 'tabBar:', tabBarHeight);
-      setIsKeyboardVisible(true);
-      const kbHeight = e.endCoordinates.height - tabBarHeight;
-      RNAnimated.timing(keyboardPadding, {
-        toValue: Math.max(kbHeight, 0),
-        duration: Platform.OS === 'ios' ? e.duration || 250 : 200,
-        useNativeDriver: false,
-      }).start();
-    };
-
-    const onHide = (e: any) => {
-      console.log('[CoachScreen] Keyboard hide');
-      setIsKeyboardVisible(false);
-      RNAnimated.timing(keyboardPadding, {
-        toValue: 0,
-        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 200,
-        useNativeDriver: false,
-      }).start();
-    };
-
-    const sub1 = Keyboard.addListener(showEvent, onShow);
-    const sub2 = Keyboard.addListener(hideEvent, onHide);
-    return () => {
-      sub1.remove();
-      sub2.remove();
-    };
-  }, [tabBarHeight, keyboardPadding]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -665,7 +630,11 @@ export default function CoachScreen() {
   
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? tabBarHeight + insets.top : 0}
+      >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconWrapper}>
@@ -838,8 +807,7 @@ export default function CoachScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <RNAnimated.View style={{ height: keyboardPadding }} />
-      </View>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showSaveModal}
