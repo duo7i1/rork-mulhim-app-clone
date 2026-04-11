@@ -1,5 +1,5 @@
 import { Sparkles, Send, Bot, User, Save } from "lucide-react-native";
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,16 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
   Modal,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated as RNAnimated,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Colors from "@/constants/colors";
 import { useFitness } from "@/providers/FitnessProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
@@ -64,6 +65,44 @@ export default function CoachScreen() {
   const [saveToFavorites, setSaveToFavorites] = useState<boolean>(false);
   const [selectedWorkoutDays, setSelectedWorkoutDays] = useState<string[]>([]);
   const [saveWorkoutToFavorites, setSaveWorkoutToFavorites] = useState<boolean>(false);
+
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const keyboardPadding = useRef(new RNAnimated.Value(0)).current;
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e: any) => {
+      console.log('[CoachScreen] Keyboard show, height:', e.endCoordinates.height, 'tabBar:', tabBarHeight);
+      setIsKeyboardVisible(true);
+      const kbHeight = e.endCoordinates.height - tabBarHeight;
+      RNAnimated.timing(keyboardPadding, {
+        toValue: Math.max(kbHeight, 0),
+        duration: Platform.OS === 'ios' ? e.duration || 250 : 200,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = (e: any) => {
+      console.log('[CoachScreen] Keyboard hide');
+      setIsKeyboardVisible(false);
+      RNAnimated.timing(keyboardPadding, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 200,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const sub1 = Keyboard.addListener(showEvent, onShow);
+    const sub2 = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      sub1.remove();
+      sub2.remove();
+    };
+  }, [tabBarHeight, keyboardPadding]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -626,11 +665,7 @@ export default function CoachScreen() {
   
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-      >
+      <View style={styles.keyboardView}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconWrapper}>
@@ -803,7 +838,8 @@ export default function CoachScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+        <RNAnimated.View style={{ height: keyboardPadding }} />
+      </View>
 
       <Modal
         visible={showSaveModal}
