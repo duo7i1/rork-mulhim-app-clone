@@ -13,7 +13,8 @@ import {
   Modal,
   Keyboard,
   TouchableWithoutFeedback,
-  Animated,
+  KeyboardAvoidingView,
+  InputAccessoryView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -68,40 +69,8 @@ export default function CoachScreen() {
 
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const keyboardPadding = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onShow = (e: any) => {
-      const kbHeight = e.endCoordinates.height;
-      const offset = kbHeight - tabBarHeight;
-      console.log('[CoachScreen] Keyboard show, kbHeight:', kbHeight, 'tabBar:', tabBarHeight, 'offset:', offset);
-      Animated.timing(keyboardPadding, {
-        toValue: Math.max(offset, 0),
-        duration: Platform.OS === 'ios' ? e.duration || 250 : 200,
-        useNativeDriver: false,
-      }).start();
-    };
-
-    const onHide = (e: any) => {
-      console.log('[CoachScreen] Keyboard hide');
-      Animated.timing(keyboardPadding, {
-        toValue: 0,
-        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 200,
-        useNativeDriver: false,
-      }).start();
-    };
-
-    const subShow = Keyboard.addListener(showEvent, onShow);
-    const subHide = Keyboard.addListener(hideEvent, onHide);
-
-    return () => {
-      subShow.remove();
-      subHide.remove();
-    };
-  }, [tabBarHeight, keyboardPadding]);
+  const INPUT_ACCESSORY_ID = 'coach-input-accessory';
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -664,8 +633,10 @@ export default function CoachScreen() {
   
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Animated.View
-        style={[styles.keyboardView, { paddingBottom: keyboardPadding }]}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? tabBarHeight : 0}
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -839,7 +810,7 @@ export default function CoachScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showSaveModal}
